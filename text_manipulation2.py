@@ -3,11 +3,16 @@ import re
 import os
 import pyperclip
 
+# TODO
+# Help Function
+# Better comments
+# Find a way to do clipboard copying in virtualized linux envs without xforwarding
+# Multi Threading
+
 # Globals
 previous_output = ""
 
-# Text Manipulation Functions
-
+# Text Manipulation Function
 # Hashes
 def regex_sha256(text):
     pattern = r"\b[A-Fa-f0-9]{64}\b"
@@ -28,6 +33,7 @@ def grep_ipv4(text):
     pattern = r'\b(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b'
     output = re.findall(pattern, text)
     return set(output)
+
 # Text Manipulation
 def newline_to_space(text):
     return text.replace('\n', ' ').strip()
@@ -35,6 +41,7 @@ def newline_to_space(text):
 def remove_blank_lines(text):
     output_clean = "\n".join([line for line in text.split('\n') if line.strip()])
     return output_clean
+
 # URI(s)
 def return_urls(text):
     pattern = r"(((https://)|(http://))?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))"
@@ -68,7 +75,6 @@ def executable_finder(text):
 def menu_operations():
     global text, previous_output
     while True:
-        #os.system('clear')  # Clear terminal
         print("\nMenu:")
         print("1) Find Hashes")
         print("2) Find IPV4 Addresses")
@@ -165,7 +171,6 @@ def URI_submenu():
 def hash_submenu():
     global text, previous_output
     while True:
-        #os.system('clear')  # Clear terminal
         print("\nHash Submenu:")
         print("1) Find SHA256")
         print("2) Find SHA1")
@@ -213,17 +218,17 @@ def file_finder_submenu():
         elif choice == "9":
             os.system("clear")
         elif choice == "2":
-            os.system('clear')  # Clear terminal
+            os.system('clear')
             break
-# Output operations        
 
+# Output operations        
 def print_output(output):
     global previous_output
-    os.system('clear')  # Clear terminal
+    os.system('clear')
     print("OUTPUT BELOW" + '\n' + "------------" + '\n' + '\n')
     for i in output:
         print(i)
-    previous_output = '\n'.join(output) # Store the output
+    previous_output = '\n'.join(output)
 
 def copy_output(output):
     if output:
@@ -262,7 +267,7 @@ def get_input():
         else:
             print("Invalid option, please try again.")
 
-# Main Loop
+# Main
 if __name__ == "__main__":
     text = ''
     get_input()
