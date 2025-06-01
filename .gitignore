@@ -235,3 +235,4 @@ logs/
 *.pid 
 
 .cursor/rules/*
+test.txt
