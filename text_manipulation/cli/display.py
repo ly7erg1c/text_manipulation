@@ -9,6 +9,55 @@ import os
 import platform
 
 
+class Color:
+    """ANSI color codes for terminal output."""
+    RED = '\033[91m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    BLUE = '\033[94m'
+    MAGENTA = '\033[95m'
+    CYAN = '\033[96m'
+    WHITE = '\033[97m'
+    RESET = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
+def display_header(title: str) -> None:
+    """
+    Display a formatted header with the given title.
+    
+    Args:
+        title: The title to display in the header
+    """
+    header_length = max(60, len(title) + 20)
+    border = "=" * header_length
+    padding = (header_length - len(title)) // 2
+    
+    print(f"\n{Color.CYAN}{border}")
+    print(f"{' ' * padding}{title}")
+    print(f"{border}{Color.RESET}")
+
+
+def display_result(message: str, result_type: str = "info") -> None:
+    """
+    Display a formatted result message.
+    
+    Args:
+        message: The message to display
+        result_type: Type of result ('success', 'error', 'warning', 'info')
+    """
+    color_map = {
+        'success': Color.GREEN,
+        'error': Color.RED,
+        'warning': Color.YELLOW,
+        'info': Color.CYAN
+    }
+    
+    color = color_map.get(result_type, Color.RESET)
+    print(f"{color}{message}{Color.RESET}")
+
+
 class DisplayManager:
     """Manages display and formatting for the CLI interface."""
     
