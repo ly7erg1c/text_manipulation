@@ -34,7 +34,6 @@ A command-line utility for extracting and manipulating various types of data fro
 - [Troubleshooting](#troubleshooting)
   - [Common Issues](#common-issues)
   - [Performance Considerations](#performance-considerations)
-- [Roadmap](#roadmap)
 - [License](#license)
 
 ## Features
@@ -488,30 +487,6 @@ cp .env.example .env
 - Memory usage scales with input size
 - IP scanning performance depends on network connectivity and API response times
 
-## Roadmap
-
-Future improvements and planned features:
-
-### Short-term (v1.1)
-- [ ] Add help function and command-line arguments
-- [ ] Email address extraction
-- [ ] Phone number extraction
-- [ ] Enhanced file format support
-
-### Medium-term (v1.2)
-- [ ] Multi-threading for better performance
-- [ ] Additional hash types (SHA384, SHA512, etc.)
-- [ ] IPv6 address support
-- [ ] JSON/XML output formats
-- [ ] Configuration file support
-
-### Long-term (v2.0)
-- [ ] Plugin system for custom extractors
-- [ ] GUI version using tkinter or PyQt
-- [ ] API mode for integration with other tools
-- [ ] Advanced text processing features
-- [ ] Machine learning-based pattern detection
-- [ ] Integration with more threat intelligence platforms
 
 ## License
 
