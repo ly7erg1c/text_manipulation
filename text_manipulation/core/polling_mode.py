@@ -206,24 +206,25 @@ class ClipboardPoller:
             return  # Silent return, no message
         
         # Now show message since we have new IOCs
-        print(f"\n[{datetime.now().strftime('%H:%M:%S')}] New IOCs detected in clipboard...")
+        timestamp = datetime.now().strftime('%H:%M:%S')
+        print(f"\n┌─ [{timestamp}] New IOCs detected in clipboard")
         
         # Show detection details
         if defanged_ips:
-            print(f"   Found {len(defanged_ips)} defanged IP address(es) (will be unfanged for analysis)")
+            print(f"├─ Found {len(defanged_ips)} defanged IP(s)")
         if defanged_urls:
-            print(f"   Found {len(defanged_urls)} defanged URL(s) (will be unfanged for analysis)")
+            print(f"├─ Found {len(defanged_urls)} defanged URL(s)")
         
         # Process new IOCs
         tasks = []
         
         if new_hashes:
-            print(f"   Found {len(new_hashes)} new hash(es)")
+            print(f"├─ Found {len(new_hashes)} new hash(es)")
             for hash_val in new_hashes:
                 tasks.append(self._analyze_hash(hash_val))
         
         if new_ips:
-            print(f"   Found {len(new_ips)} new IP address(es)")
+            print(f"└─ Processing {len(new_ips)} IP address(es)")
             for ip in new_ips:
                 # Check if this IP was originally defanged (either as IP or misclassified as URL)
                 original_defanged = None
@@ -244,7 +245,7 @@ class ClipboardPoller:
                 tasks.append(self._analyze_ip(ip, original_defanged))
         
         if new_urls:
-            print(f"   Found {len(new_urls)} new URL(s)")
+            print(f"└─ Processing {len(new_urls)} URL(s)")
             for url in new_urls:
                 # Check if this URL was originally defanged
                 original_defanged = None
@@ -256,7 +257,22 @@ class ClipboardPoller:
         
         # Process all IOCs concurrently
         if tasks:
+            print()  # Add space before results
+            
+            # Track session stats for this batch
+            session_abuse_count = 0
+            
+            # Analyze IPs and count abuse cases for this session
+            for ip in new_ips:
+                # This would be done in the actual analysis, but for summary we need a simpler approach
+                pass
+            
             await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # Show quick summary if we processed multiple IPs
+            if len(new_ips) > 1:
+                print(f"┌─ Summary: Processed {len(new_ips)} IP addresses")
+                print("└─" + "─" * 35)
         
         # Update processed IOCs (track unfanged versions)
         self.processed_iocs.update(new_hashes)
@@ -308,11 +324,7 @@ class ClipboardPoller:
             tasks.append(("IPInfo", self.ipinfo_client.get_ip_info(ip_address)))
         
         if not tasks:
-            print(f"\nIP ANALYSIS: {ip_address}")
-            if original_defanged:
-                print(f"   (Original defanged format: {original_defanged})")
-            print("   WARNING: No API keys configured for IP analysis")
-            print("─" * 50)
+            print(f"🔍 {ip_address} - No API keys configured")
             return
         
         try:
@@ -339,36 +351,35 @@ class ClipboardPoller:
                         elif abuse_confidence > 25:
                             total_detections += 1
             
-            # Determine overall status
+            # Determine overall status and icon
             if total_detections >= 3:
-                overall_status = f"{Color.RED}(ABUSE){Color.RESET}"
+                status_icon = "🚨"
+                overall_status = f"{Color.RED}ABUSE{Color.RESET}"
                 self.stats["malicious_ips"] += 1
             elif total_detections >= 1:
-                overall_status = f"{Color.YELLOW}(Possible Abuse){Color.RESET}"
+                status_icon = "⚠️ "
+                overall_status = f"{Color.YELLOW}Possible Abuse{Color.RESET}"
             else:
-                overall_status = f"{Color.GREEN}(CLEAN){Color.RESET}"
+                status_icon = "✅"
+                overall_status = f"{Color.GREEN}CLEAN{Color.RESET}"
             
-            # Display header with overall status
-            print(f"\nIP ANALYSIS: {ip_address} {overall_status}")
-            if original_defanged:
-                print(f"   (Original defanged format: {original_defanged})")
+            # Display compact header
+            defang_info = f" (from {original_defanged})" if original_defanged else ""
+            print(f"{status_icon} {ip_address} - {overall_status}{defang_info}")
             
-            # Display results
+            # Display compact results
             for service_name, result in zip(service_names, results):
                 if isinstance(result, Exception):
-                    print(f"   ERROR {service_name}: {result}")
+                    print(f"   {service_name}: {Color.RED}Error{Color.RESET}")
                 else:
                     self._display_ip_result_compact(service_name, result)
             
-            # Add separator line
-            print("─" * 50)
+            # Shorter separator
+            print("─" * 40)
                     
         except Exception as e:
-            print(f"\nIP ANALYSIS: {ip_address}")
-            if original_defanged:
-                print(f"   (Original defanged format: {original_defanged})")
-            print(f"   ERROR: Error analyzing IP: {e}")
-            print("─" * 50)
+            print(f"🔍 {ip_address} - {Color.RED}Analysis failed{Color.RESET}")
+            print("─" * 40)
     
     async def _analyze_url(self, url: str, original_defanged: Optional[str] = None) -> None:
         """
@@ -465,85 +476,88 @@ class ClipboardPoller:
             result: Analysis result
         """
         if "error" in result:
-            print(f"   {service}: {Color.RED}ERROR - {result['error']}{Color.RESET}")
+            print(f"   {service}: {Color.RED}Error{Color.RESET}")
             return
         
         if service == "VirusTotal":
-            reputation = result.get("reputation_score", "Unknown")
-            stats = result.get("reputation_stats", {})
-            malicious_count = stats.get('malicious', 0)
-            total_count = sum(stats.values()) if stats else 0
+            malicious_count = result.get("reputation_stats", {}).get('malicious', 0)
+            total_count = sum(result.get("reputation_stats", {}).values()) or 0
             
-            # Status with color
-            if reputation == "Malicious":
-                status_display = f"{Color.RED}[MALICIOUS]{Color.RESET}"
-            elif reputation == "Suspicious":
-                status_display = f"{Color.YELLOW}[SUSPICIOUS]{Color.RESET}"
-            else:
-                status_display = f"{Color.GREEN}[CLEAN]{Color.RESET}"
-            
-            # Detection count with color
+            # Compact status with color
             if malicious_count == 0:
-                detection_color = Color.GREEN
+                status_color = Color.GREEN
+                status_text = "Clean"
             elif malicious_count <= 3:
-                detection_color = Color.YELLOW
+                status_color = Color.YELLOW
+                status_text = "Suspicious"
             else:
-                detection_color = Color.RED
+                status_color = Color.RED
+                status_text = "Malicious"
             
-            # Build single line output
-            line_parts = [f"Status: {status_display}"]
-            line_parts.append(f"Detections: {detection_color}{malicious_count}/{total_count}{Color.RESET} engines")
+            # Build compact info
+            info_parts = [f"{status_color}{malicious_count}/{total_count}{Color.RESET}"]
             
             if result.get("country"):
-                line_parts.append(f"Country: {result['country']}")
-            if result.get("owner"):
-                line_parts.append(f"Owner: {result['owner']}")
+                info_parts.append(result['country'])
             
-            print(f"   {service}: {', '.join(line_parts)}")
+            # Abbreviate common ASN names
+            if result.get("owner"):
+                owner = result['owner']
+                owner = owner.replace("DIGITALOCEAN-ASN", "DigitalOcean")
+                owner = owner.replace("GOOGLE-CLOUD-PLATFORM", "Google Cloud")
+                owner = owner.replace("AS-COLOCROSSING", "ColoCrossing")
+                owner = owner.replace("UNIFIEDLAYER-AS-1", "UnifiedLayer")
+                owner = owner.replace("Data Center/Web Hosting/Transit", "Hosting")
+                info_parts.append(owner[:20])  # Limit length
+            
+            print(f"   VT: {' | '.join(info_parts)}")
         
         elif service == "AbuseIPDB":
             confidence = result.get("abuse_confidence_score", 0)
+            reports = result.get("total_reports", 0)
             
-            # Confidence with color
+            # Compact confidence display
             if confidence > 75:
-                confidence_display = f"{Color.RED}[HIGH] {confidence}%{Color.RESET}"
+                conf_color = Color.RED
             elif confidence > 25:
-                confidence_display = f"{Color.YELLOW}[MEDIUM] {confidence}%{Color.RESET}"
+                conf_color = Color.YELLOW
             else:
-                confidence_display = f"{Color.GREEN}[LOW] {confidence}%{Color.RESET}"
+                conf_color = Color.GREEN
             
-            # Build single line output
-            line_parts = [f"Abuse Confidence: {confidence_display}"]
+            info_parts = [f"{conf_color}{confidence}%{Color.RESET}"]
             
-            if result.get("country_code") and result.get("country_code") != "Unknown":
-                line_parts.append(f"Country: {result['country_code']}")
-            if result.get("usage_type") and result.get("usage_type") != "Unknown":
-                line_parts.append(f"Usage: {result['usage_type']}")
-            if result.get("total_reports", 0) > 0:
-                reports_count = result['total_reports']
-                if reports_count > 100:
+            if reports > 0:
+                if reports > 100:
                     reports_color = Color.RED
-                elif reports_count > 10:
+                elif reports > 10:
                     reports_color = Color.YELLOW
                 else:
                     reports_color = Color.CYAN
-                line_parts.append(f"Reports: {reports_color}{reports_count}{Color.RESET}")
+                info_parts.append(f"{reports_color}{reports}rep{Color.RESET}")
             
-            print(f"   {service}: {', '.join(line_parts)}")
+            # Skip usage type if it's the common "Data Center/Web Hosting/Transit"
+            usage = result.get("usage_type", "")
+            if usage and usage != "Data Center/Web Hosting/Transit":
+                info_parts.append(usage.replace("Data Center/Web Hosting/Transit", "Hosting")[:15])
+            
+            print(f"   AB: {' | '.join(info_parts)}")
         
         elif service == "IPInfo":
-            line_parts = []
+            info_parts = []
             
-            if result.get("country"):
-                location = f"{result.get('city', 'Unknown')}, {result['country']}"
-                line_parts.append(f"Location: {location}")
+            if result.get("city") and result.get("country"):
+                location = f"{result['city']}, {result['country']}"
+                info_parts.append(location)
+            
+            # Skip organization if it's redundant with VT owner
             if result.get("org"):
-                line_parts.append(f"Organization: {result['org']}")
-            if result.get("timezone"):
-                line_parts.append(f"Timezone: {result['timezone']}")
+                org = result['org']
+                # Don't show if it's similar to what VT already showed
+                if not any(name in org.upper() for name in ["DIGITALOCEAN", "GOOGLE", "COLOCROSSING"]):
+                    info_parts.append(org[:25])
             
-            if line_parts:
-                print(f"   {service}: {', '.join(line_parts)}")
+            if info_parts:
+                print(f"   IP: {' | '.join(info_parts)}")
     
     def _display_url_result(self, result: Dict[str, Any], original_defanged: Optional[str] = None) -> None:
         """
