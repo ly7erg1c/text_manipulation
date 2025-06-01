@@ -89,6 +89,7 @@ Select a category:
 3. File Operations
 4. Text Manipulation
 5. Data Input/Management
+6. API Configuration
 0. Exit
 ```
 
@@ -131,6 +132,21 @@ Select an option:
 1. Input new text
 2. View current text info
 3. Clear current text
+0. Back to main menu
+```
+
+**API Configuration Menu:**
+```
+============================================================
+           API CONFIGURATION
+============================================================
+
+Select an option:
+1. Set IPInfo API Key
+2. Set VirusTotal API Key
+3. Set AbuseIPDB API Key
+4. View current API configuration
+5. Clear all API keys
 0. Back to main menu
 ```
 
@@ -197,6 +213,68 @@ The tool includes an integrated IP scanner that can:
 - Analyze IP reputation and geolocation
 - Provide detailed threat reports
 - Support bulk IP scanning
+
+### API Configuration
+
+The tool supports integration with multiple threat intelligence services. You can configure API keys through the interactive menu or environment variables.
+
+#### Supported Services
+
+1. **IPInfo** (Optional)
+   - Provides enhanced IP geolocation and threat intelligence data
+   - Free tier: 50,000 requests/month without API key
+   - Enhanced features with paid API key
+   - Get your API key at: https://ipinfo.io/signup
+
+2. **VirusTotal** (Required for IP scanning)
+   - Provides malware and threat intelligence data
+   - Required for IP scanning functionality
+   - Get your API key at: https://www.virustotal.com/gui/join-us
+
+3. **AbuseIPDB** (Required for IP scanning)
+   - Provides IP abuse and reputation data
+   - Required for IP scanning functionality
+   - Get your API key at: https://www.abuseipdb.com/register
+
+#### Setting Up API Keys
+
+##### Interactive Configuration (Recommended)
+
+1. Run the tool: `python main.py`
+2. Select "6. API Configuration" from the main menu
+3. Choose the service you want to configure
+4. Enter your API key when prompted
+5. Choose whether to save to `.env` file for persistence
+
+##### Manual Configuration
+
+Create a `.env` file in the project root:
+
+```bash
+# Copy .env.example to .env and add your keys
+cp .env.example .env
+```
+
+Edit the `.env` file with your API keys:
+
+```bash
+# IPInfo API Key (Optional - enhances geolocation data)
+IPINFO_API_KEY=your_ipinfo_api_key_here
+
+# VirusTotal API Key (Required for IP scanning)
+VIRUSTOTAL_API_KEY=your_virustotal_api_key_here
+
+# AbuseIPDB API Key (Required for IP scanning)
+ABUSEIPDB_API_KEY=your_abuseipdb_api_key_here
+```
+
+#### API Key Features
+
+- **Session Management**: Keys set through the menu are available for the current session
+- **Persistent Storage**: Option to save keys to `.env` file for future sessions
+- **Masked Display**: API keys are partially hidden when viewing configuration
+- **Validation**: Basic format validation when setting keys
+- **Secure Handling**: Keys are stored securely and never logged
 
 ## Architecture
 

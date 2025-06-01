@@ -40,6 +40,7 @@ class TextManipulationCLI:
         print("3. File Operations") 
         print("4. Text Manipulation")
         print("5. Data Input/Management")
+        print("6. API Configuration")
         print("0. Exit")
 
     def display_hash_menu(self) -> None:
@@ -94,6 +95,19 @@ class TextManipulationCLI:
         print("2. View current text info")
         print("3. Clear current text")
         print("0. Back to main menu")
+
+    def display_api_menu(self) -> None:
+        """Display API configuration submenu."""
+        print("\n" + "=" * 60)
+        print("           API CONFIGURATION")
+        print("=" * 60)
+        print("\nSelect an option:")
+        print("1. Set IPInfo API Key")
+        print("2. Set VirusTotal API Key")
+        print("3. Set AbuseIPDB API Key")
+        print("4. View current API configuration")
+        print("5. Clear all API keys")
+        print("0. Back to main menu")
     
     def run(self) -> None:
         """Main CLI loop."""
@@ -119,6 +133,8 @@ class TextManipulationCLI:
                 self._handle_text_menu()
             elif choice == '5':
                 self._handle_data_menu()
+            elif choice == '6':
+                self._handle_api_menu()
             else:
                 print("Invalid option, please try again.")
 
@@ -228,15 +244,36 @@ class TextManipulationCLI:
             if choice == '0':
                 break
             elif choice == '1':
-                self.text = self.input_handler.get_text_input()
-                print("\nText input updated. You can now perform operations on the new text.")
-                input("\nPress Enter to continue...")
+                self.text = self.input_handler.get_input()
+                if self.text:
+                    print(f"\nText loaded successfully! ({len(self.text)} characters)")
             elif choice == '2':
                 self._show_text_info()
                 input("\nPress Enter to continue...")
             elif choice == '3':
                 self._clear_text()
+            else:
+                print("Invalid option, please try again.")
+
+    def _handle_api_menu(self) -> None:
+        """Handle API configuration submenu."""
+        while True:
+            self.display_api_menu()
+            choice = input("\nEnter your choice: ").strip()
+            
+            if choice == '0':
+                break
+            elif choice == '1':
+                self._set_api_key('IPINFO_API_KEY', 'IPInfo')
+            elif choice == '2':
+                self._set_api_key('VIRUSTOTAL_API_KEY', 'VirusTotal')
+            elif choice == '3':
+                self._set_api_key('ABUSEIPDB_API_KEY', 'AbuseIPDB')
+            elif choice == '4':
+                self._show_api_configuration()
                 input("\nPress Enter to continue...")
+            elif choice == '5':
+                self._clear_api_keys()
             else:
                 print("Invalid option, please try again.")
 
@@ -331,6 +368,7 @@ class TextManipulationCLI:
         """Prompt user for initial data input when the tool starts."""
         print("\n" + "=" * 60)
         print("           WELCOME TO TEXT MANIPULATION TOOL")
+        print("                 VERSION 2.0.0 | By: lys")
         print("=" * 60)
         
         while True:
@@ -348,4 +386,176 @@ class TextManipulationCLI:
                 print("You can also input data when selecting any extraction operation.")
                 break
             else:
-                print("Please enter 'y' for yes or 'n' for no.") 
+                print("Please enter 'y' for yes or 'n' for no.")
+
+    def _set_api_key(self, env_var_name: str, service_name: str) -> None:
+        """Set an API key for a specific service."""
+        print(f"\n{service_name} API Key Configuration")
+        print("=" * 40)
+        
+        # Show current status
+        current_key = os.getenv(env_var_name)
+        if current_key:
+            masked_key = current_key[:8] + "*" * (len(current_key) - 8) if len(current_key) > 8 else "*" * len(current_key)
+            print(f"Current key: {masked_key}")
+        else:
+            print("Current key: Not set")
+        
+        # Show service information
+        if env_var_name == 'IPINFO_API_KEY':
+            print(f"\n{service_name} provides IP geolocation and threat intelligence data.")
+            print("Free tier: 50,000 requests/month without API key")
+            print("Paid tier: Higher limits with API key")
+            print("Get your API key at: https://ipinfo.io/signup")
+        elif env_var_name == 'VIRUSTOTAL_API_KEY':
+            print(f"\n{service_name} provides malware and threat intelligence data.")
+            print("Required for IP scanning functionality.")
+            print("Get your API key at: https://www.virustotal.com/gui/join-us")
+        elif env_var_name == 'ABUSEIPDB_API_KEY':
+            print(f"\n{service_name} provides IP abuse and reputation data.")
+            print("Required for IP scanning functionality.")
+            print("Get your API key at: https://www.abuseipdb.com/register")
+        
+        print(f"\nEnter your {service_name} API key (or press Enter to skip):")
+        api_key = input("> ").strip()
+        
+        if not api_key:
+            print(f"\n{service_name} API key not changed.")
+            return
+        
+        # Validate key format (basic validation)
+        if len(api_key) < 10:
+            print(f"\n⚠ Warning: API key seems too short. Please verify it's correct.")
+        
+        # Set the environment variable for current session
+        os.environ[env_var_name] = api_key
+        
+        # Offer to save to .env file
+        self._save_api_key_to_env_file(env_var_name, api_key, service_name)
+        
+        print(f"\n✓ {service_name} API key set successfully for this session!")
+        
+        # Reinitialize IP scanner to pick up new keys
+        if hasattr(self, 'ip_scanner'):
+            self.ip_scanner = IPScannerInterface()
+
+    def _save_api_key_to_env_file(self, env_var_name: str, api_key: str, service_name: str) -> None:
+        """Save API key to .env file for persistence."""
+        save_choice = input(f"\nSave {service_name} API key to .env file for future sessions? (y/n): ").strip().lower()
+        
+        if save_choice not in ['y', 'yes']:
+            print("API key will only be available for this session.")
+            return
+        
+        try:
+            env_file_path = '.env'
+            env_content = {}
+            
+            # Read existing .env file if it exists
+            if os.path.exists(env_file_path):
+                with open(env_file_path, 'r') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith('#') and '=' in line:
+                            key, value = line.split('=', 1)
+                            env_content[key.strip()] = value.strip()
+            
+            # Update or add the API key
+            env_content[env_var_name] = api_key
+            
+            # Write back to .env file
+            with open(env_file_path, 'w') as f:
+                f.write("# API Keys for Text Manipulation Tool\n")
+                f.write("# Get your API keys from the respective service providers\n\n")
+                
+                for key, value in env_content.items():
+                    f.write(f"{key}={value}\n")
+            
+            print(f"✓ {service_name} API key saved to .env file!")
+            
+        except Exception as e:
+            print(f"⚠ Failed to save to .env file: {e}")
+            print("The API key is still set for this session.")
+
+    def _show_api_configuration(self) -> None:
+        """Display current API configuration status."""
+        print("\nCurrent API Configuration")
+        print("=" * 40)
+        
+        # Check each API key
+        api_keys = [
+            ('IPINFO_API_KEY', 'IPInfo', 'Optional - Enhanced geolocation data'),
+            ('VIRUSTOTAL_API_KEY', 'VirusTotal', 'Required - Malware scanning'),
+            ('ABUSEIPDB_API_KEY', 'AbuseIPDB', 'Required - IP abuse data')
+        ]
+        
+        for env_var, service, description in api_keys:
+            current_key = os.getenv(env_var)
+            if current_key:
+                masked_key = current_key[:8] + "*" * (len(current_key) - 8) if len(current_key) > 8 else "*" * len(current_key)
+                status = f"✓ Configured ({masked_key})"
+                color = "\033[92m"  # Green
+            else:
+                status = "✗ Not configured"
+                color = "\033[91m" if 'Required' in description else "\033[93m"  # Red for required, Yellow for optional
+            
+            reset_color = "\033[0m"
+            print(f"{service:12} | {color}{status:25}{reset_color} | {description}")
+        
+        # Check if .env file exists
+        if os.path.exists('.env'):
+            print(f"\n✓ .env file exists - API keys will persist across sessions")
+        else:
+            print(f"\n⚠ No .env file found - API keys are session-only")
+        
+        # Show usage recommendations
+        print(f"\nRecommendations:")
+        if not os.getenv('VIRUSTOTAL_API_KEY') or not os.getenv('ABUSEIPDB_API_KEY'):
+            print("• Set VirusTotal and AbuseIPDB API keys to use IP scanning features")
+        if not os.getenv('IPINFO_API_KEY'):
+            print("• Set IPInfo API key for enhanced geolocation data (optional)")
+
+    def _clear_api_keys(self) -> None:
+        """Clear all API keys."""
+        print("\nClear API Keys")
+        print("=" * 20)
+        
+        confirm = input("Are you sure you want to clear all API keys? (y/n): ").strip().lower()
+        if confirm not in ['y', 'yes']:
+            print("API keys not cleared.")
+            return
+        
+        # Clear from current session
+        api_keys = ['IPINFO_API_KEY', 'VIRUSTOTAL_API_KEY', 'ABUSEIPDB_API_KEY']
+        cleared_count = 0
+        
+        for key in api_keys:
+            if os.getenv(key):
+                del os.environ[key]
+                cleared_count += 1
+        
+        # Ask about .env file
+        if os.path.exists('.env'):
+            clear_file = input("Also remove API keys from .env file? (y/n): ").strip().lower()
+            if clear_file in ['y', 'yes']:
+                try:
+                    # Read .env file and remove API key lines
+                    new_content = []
+                    with open('.env', 'r') as f:
+                        for line in f:
+                            if not any(key in line for key in api_keys):
+                                new_content.append(line)
+                    
+                    # Write back without API keys
+                    with open('.env', 'w') as f:
+                        f.writelines(new_content)
+                    
+                    print("✓ API keys removed from .env file")
+                except Exception as e:
+                    print(f"⚠ Failed to update .env file: {e}")
+        
+        print(f"✓ Cleared {cleared_count} API keys from current session")
+        
+        # Reinitialize IP scanner
+        if hasattr(self, 'ip_scanner'):
+            self.ip_scanner = IPScannerInterface() 
