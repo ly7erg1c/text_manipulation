@@ -295,11 +295,6 @@ class ClipboardPoller:
         """
         self.stats["total_ips_processed"] += 1
         
-        print(f"\nIP ANALYSIS: {ip_address}")
-        if original_defanged:
-            print(f"   (Original defanged format: {original_defanged})")
-        print("   " + "─" * 60)
-        
         # Run all available IP checks in parallel
         tasks = []
         
@@ -313,7 +308,11 @@ class ClipboardPoller:
             tasks.append(("IPInfo", self.ipinfo_client.get_ip_info(ip_address)))
         
         if not tasks:
+            print(f"\nIP ANALYSIS: {ip_address}")
+            if original_defanged:
+                print(f"   (Original defanged format: {original_defanged})")
             print("   WARNING: No API keys configured for IP analysis")
+            print("─" * 50)
             return
         
         try:
@@ -322,15 +321,54 @@ class ClipboardPoller:
             service_tasks = [task[1] for task in tasks]
             results = await asyncio.gather(*service_tasks, return_exceptions=True)
             
+            # Calculate overall status based on detections
+            total_detections = 0
+            vt_detections = 0
+            abuse_confidence = 0
+            
+            for service_name, result in zip(service_names, results):
+                if not isinstance(result, Exception):
+                    if service_name == "VirusTotal" and "reputation_stats" in result:
+                        vt_detections = result.get("reputation_stats", {}).get('malicious', 0)
+                        total_detections += vt_detections
+                    elif service_name == "AbuseIPDB" and "abuse_confidence_score" in result:
+                        abuse_confidence = result.get("abuse_confidence_score", 0)
+                        # Consider high confidence as additional "detections"
+                        if abuse_confidence > 75:
+                            total_detections += 2
+                        elif abuse_confidence > 25:
+                            total_detections += 1
+            
+            # Determine overall status
+            if total_detections >= 3:
+                overall_status = f"{Color.RED}(ABUSE){Color.RESET}"
+                self.stats["malicious_ips"] += 1
+            elif total_detections >= 1:
+                overall_status = f"{Color.YELLOW}(Possible Abuse){Color.RESET}"
+            else:
+                overall_status = f"{Color.GREEN}(CLEAN){Color.RESET}"
+            
+            # Display header with overall status
+            print(f"\nIP ANALYSIS: {ip_address} {overall_status}")
+            if original_defanged:
+                print(f"   (Original defanged format: {original_defanged})")
+            
             # Display results
             for service_name, result in zip(service_names, results):
                 if isinstance(result, Exception):
                     print(f"   ERROR {service_name}: {result}")
                 else:
-                    self._display_ip_result(service_name, result, ip_address, original_defanged)
+                    self._display_ip_result_compact(service_name, result)
+            
+            # Add separator line
+            print("─" * 50)
                     
         except Exception as e:
+            print(f"\nIP ANALYSIS: {ip_address}")
+            if original_defanged:
+                print(f"   (Original defanged format: {original_defanged})")
             print(f"   ERROR: Error analyzing IP: {e}")
+            print("─" * 50)
     
     async def _analyze_url(self, url: str, original_defanged: Optional[str] = None) -> None:
         """
@@ -418,21 +456,17 @@ class ClipboardPoller:
                 size_kb = result["file_size"] / 1024
                 print(f"   Size: {size_kb:.2f} KB")
     
-    def _display_ip_result(self, service: str, result: Dict[str, Any], ip_address: str, original_defanged: Optional[str] = None) -> None:
+    def _display_ip_result_compact(self, service: str, result: Dict[str, Any]) -> None:
         """
-        Display IP analysis results in a clean format.
+        Display IP analysis results in a compact single-line format.
         
         Args:
             service: Name of the service that provided the result
             result: Analysis result
-            ip_address: IP address being analyzed
-            original_defanged: Original defanged IP address
         """
         if "error" in result:
-            print(f"   {Color.RED}ERROR {service}: {result['error']}{Color.RESET}")
+            print(f"   {service}: {Color.RED}ERROR - {result['error']}{Color.RESET}")
             return
-        
-        print(f"   {service}:")
         
         if service == "VirusTotal":
             reputation = result.get("reputation_score", "Unknown")
@@ -440,25 +474,15 @@ class ClipboardPoller:
             malicious_count = stats.get('malicious', 0)
             total_count = sum(stats.values()) if stats else 0
             
+            # Status with color
             if reputation == "Malicious":
-                if malicious_count >= 10:
-                    status_display = f"{Color.RED}[MALICIOUS]{Color.RESET} {reputation}"
-                elif malicious_count >= 5:
-                    status_display = f"{Color.YELLOW}[MALICIOUS]{Color.RESET} {reputation}"
-                else:
-                    status_display = f"{Color.YELLOW}[MALICIOUS]{Color.RESET} {reputation}"
-                self.stats["malicious_ips"] += 1
+                status_display = f"{Color.RED}[MALICIOUS]{Color.RESET}"
             elif reputation == "Suspicious":
-                if malicious_count >= 3:
-                    status_display = f"{Color.YELLOW}[SUSPICIOUS]{Color.RESET} {reputation}"
-                else:
-                    status_display = f"{Color.CYAN}[SUSPICIOUS]{Color.RESET} {reputation}"
+                status_display = f"{Color.YELLOW}[SUSPICIOUS]{Color.RESET}"
             else:
-                status_display = f"{Color.GREEN}[CLEAN]{Color.RESET} {reputation}"
+                status_display = f"{Color.GREEN}[CLEAN]{Color.RESET}"
             
-            print(f"      Status: {status_display}")
-            
-            # Color the detection count
+            # Detection count with color
             if malicious_count == 0:
                 detection_color = Color.GREEN
             elif malicious_count <= 3:
@@ -466,31 +490,35 @@ class ClipboardPoller:
             else:
                 detection_color = Color.RED
             
-            print(f"      Detections: {detection_color}{malicious_count}/{total_count}{Color.RESET} engines")
+            # Build single line output
+            line_parts = [f"Status: {status_display}"]
+            line_parts.append(f"Detections: {detection_color}{malicious_count}/{total_count}{Color.RESET} engines")
             
             if result.get("country"):
-                print(f"      Country: {result['country']}")
+                line_parts.append(f"Country: {result['country']}")
             if result.get("owner"):
-                print(f"      Owner: {result['owner']}")
+                line_parts.append(f"Owner: {result['owner']}")
+            
+            print(f"   {service}: {', '.join(line_parts)}")
         
         elif service == "AbuseIPDB":
             confidence = result.get("abuse_confidence_score", 0)
             
+            # Confidence with color
             if confidence > 75:
                 confidence_display = f"{Color.RED}[HIGH] {confidence}%{Color.RESET}"
-                if ip_address not in [result.get("ip") for result in [r for r in [result] if r.get("ip")]]:
-                    self.stats["malicious_ips"] += 1
             elif confidence > 25:
                 confidence_display = f"{Color.YELLOW}[MEDIUM] {confidence}%{Color.RESET}"
             else:
                 confidence_display = f"{Color.GREEN}[LOW] {confidence}%{Color.RESET}"
             
-            print(f"      Abuse Confidence: {confidence_display}")
+            # Build single line output
+            line_parts = [f"Abuse Confidence: {confidence_display}"]
             
             if result.get("country_code") and result.get("country_code") != "Unknown":
-                print(f"      Country: {result['country_code']}")
+                line_parts.append(f"Country: {result['country_code']}")
             if result.get("usage_type") and result.get("usage_type") != "Unknown":
-                print(f"      Usage: {result['usage_type']}")
+                line_parts.append(f"Usage: {result['usage_type']}")
             if result.get("total_reports", 0) > 0:
                 reports_count = result['total_reports']
                 if reports_count > 100:
@@ -499,15 +527,23 @@ class ClipboardPoller:
                     reports_color = Color.YELLOW
                 else:
                     reports_color = Color.CYAN
-                print(f"      Total Reports: {reports_color}{reports_count}{Color.RESET}")
+                line_parts.append(f"Reports: {reports_color}{reports_count}{Color.RESET}")
+            
+            print(f"   {service}: {', '.join(line_parts)}")
         
         elif service == "IPInfo":
+            line_parts = []
+            
             if result.get("country"):
-                print(f"      Location: {result.get('city', 'Unknown')}, {result['country']}")
+                location = f"{result.get('city', 'Unknown')}, {result['country']}"
+                line_parts.append(f"Location: {location}")
             if result.get("org"):
-                print(f"      Organization: {result['org']}")
+                line_parts.append(f"Organization: {result['org']}")
             if result.get("timezone"):
-                print(f"      Timezone: {result['timezone']}")
+                line_parts.append(f"Timezone: {result['timezone']}")
+            
+            if line_parts:
+                print(f"   {service}: {', '.join(line_parts)}")
     
     def _display_url_result(self, result: Dict[str, Any], original_defanged: Optional[str] = None) -> None:
         """
