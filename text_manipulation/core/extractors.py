@@ -193,9 +193,10 @@ class NetworkExtractor:
         defanged_urls = set()
         
         for url in urls:
-            defanged = url.replace('.', '[.]')
-            defanged = defanged.replace('http://', 'hxxp://')
+            # First replace protocols, then dots
+            defanged = url.replace('http://', 'hxxp://')
             defanged = defanged.replace('https://', 'hxxps://')
+            defanged = defanged.replace('.', '[.]')
             defanged_urls.add(defanged)
         
         return defanged_urls

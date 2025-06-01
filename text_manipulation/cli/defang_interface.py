@@ -267,9 +267,10 @@ class DefangInterface:
             print(f"\nOriginal:  {user_input}")
             print(f"Defanged:  {defanged}")
         elif '.' in user_input:  # Assume it's a URL or domain
-            defanged = user_input.replace('.', '[.]')
-            defanged = defanged.replace('http://', 'hxxp://')
+            # First replace protocols, then dots
+            defanged = user_input.replace('http://', 'hxxp://')
             defanged = defanged.replace('https://', 'hxxps://')
+            defanged = defanged.replace('.', '[.]')
             print(f"\nOriginal:  {user_input}")
             print(f"Defanged:  {defanged}")
         else:
