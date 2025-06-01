@@ -41,6 +41,8 @@ A command-line utility for extracting and manipulating various types of data fro
 - **Hash Extraction**: Extract cryptographic hashes (MD5, SHA1, SHA256) from text
 - **Network Data Extraction**: Find IPv4 addresses and URLs (with defanging support)
 - **IP Threat Intelligence**: Scan IP addresses for threat intelligence
+- **URL Threat Intelligence**: Scan URLs for malware and reputation analysis via VirusTotal
+- **Polling Mode**: Automatically watch clipboard for hashes, IPs, and URLs with real-time threat intelligence analysis
 - **File Reference Extraction**: Locate executable file references (.exe, .bat, .cmd, .sh, .bin)
 - **Text Manipulation**: Convert newlines to spaces, remove blank lines
 - **Data Management**: View text statistics, clear text, manage input data
@@ -124,6 +126,7 @@ Select a category:
 4. Text Manipulation
 5. Data Input/Management
 6. API Configuration
+7. Polling Mode
 0. Exit
 ```
 
@@ -153,6 +156,7 @@ Select an option:
 2. Extract URLs (with http/https)
 3. Extract and defang URLs
 4. IP Address Threat Intelligence Scanner
+5. URL Threat Intelligence Scanner
 0. Back to main menu
 ```
 
@@ -184,7 +188,45 @@ Select an option:
 0. Back to main menu
 ```
 
+**Polling Mode Menu:**
+```
+============================================================
+       Polling Mode
+============================================================
+
+Select an option:
+1. Start Polling mode
+2. Configure polling interval
+3. Check API configuration status
+4. Help & information
+0. Back to main menu
+```
+
 ### Enhanced Features
+
+#### Polling Mode
+The clipboard monitor automatically detects and analyzes security indicators when you copy them:
+
+- **Real-time Detection**: Monitors clipboard for SHA hashes (MD5, SHA1, SHA256), IP addresses, and URLs
+- **Automatic Analysis**: Instantly analyzes detected IOCs using threat intelligence APIs
+- **Streaming Results**: Clean, formatted output streamed to terminal in real-time
+- **Session Statistics**: Tracks analyzed IOCs and malicious findings
+- **Configurable Polling**: Adjustable monitoring interval (0.5-60 seconds)
+- **Smart Deduplication**: Only analyzes each IOC once per session
+
+Example clipboard monitoring output:
+```
+[14:25:30] New clipboard content detected...
+   Found 1 new hash(es)
+
+HASH ANALYSIS: 5d41402abc4b2a76b9719d911017c592
+   ────────────────────────────────────────────────────────
+   Status: [CLEAN] Clean
+   Detections: 0/73 engines
+   Type: Text file
+   Name: hello.txt
+   Size: 5.00 KB
+```
 
 #### Text Information Display
 View detailed statistics about your loaded text:
@@ -200,6 +242,25 @@ View detailed statistics about your loaded text:
 - Better empty result handling with informative messages
 
 ### Examples
+
+#### Clipboard Monitoring Workflow
+
+1. **Start Monitoring**: Select option 7 from main menu, then option 1
+2. **Copy IOCs**: Copy any text containing hashes or IP addresses
+3. **Watch Analysis**: See real-time threat intelligence results
+4. **Stop Monitoring**: Press Ctrl+C to stop and see session summary
+
+```
+SESSION SUMMARY
+Duration: 00:15:42
+Polling cycles: 471
+Hashes analyzed: 12
+IPs analyzed: 8
+URLs analyzed: 5
+Malicious hashes: 3
+Malicious IPs: 1
+Malicious URLs: 2
+```
 
 #### Finding Hashes
 
@@ -248,6 +309,24 @@ The tool includes an integrated IP scanner that can:
 - Provide detailed threat reports
 - Support bulk IP scanning
 
+#### URL Threat Intelligence Scanning
+
+The tool includes URL analysis capabilities that can:
+- Check URLs against VirusTotal's database
+- Analyze URL reputation and categories
+- Detect malicious and suspicious URLs
+- Process single URLs or bulk lists
+- Extract URLs from clipboard content
+
+Example URL scan output:
+```
+URL: https://malicious-example.com
+  VirusTotal: [MALICIOUS] Malicious
+    Detections: 15/89 engines
+    Categories: malware, phishing
+    Threats: Trojan.Generic, Phishing.Scam
+```
+
 ### API Configuration
 
 The tool supports integration with multiple threat intelligence services. You can configure API keys through the interactive menu or environment variables.
@@ -260,9 +339,9 @@ The tool supports integration with multiple threat intelligence services. You ca
    - Enhanced features with paid API key
    - Get your API key at: https://ipinfo.io/signup
 
-2. **VirusTotal** (Required for IP scanning)
+2. **VirusTotal** (Required for IP scanning and URL analysis)
    - Provides malware and threat intelligence data
-   - Required for IP scanning functionality
+   - Required for IP scanning and URL analysis functionality
    - Get your API key at: https://www.virustotal.com/gui/join-us
 
 3. **AbuseIPDB** (Required for IP scanning)
@@ -295,7 +374,7 @@ Edit the `.env` file with your API keys:
 # IPInfo API Key (Optional - enhances geolocation data)
 IPINFO_API_KEY=your_ipinfo_api_key_here
 
-# VirusTotal API Key (Required for IP scanning)
+# VirusTotal API Key (Required for IP scanning and URL analysis)
 VIRUSTOTAL_API_KEY=your_virustotal_api_key_here
 
 # AbuseIPDB API Key (Required for IP scanning)
@@ -329,7 +408,8 @@ text-manipulation-tool/
 │       ├── interface.py        # Main CLI interface with sub-menus
 │       ├── input_handler.py    # Input handling
 │       ├── display.py          # Display management
-│       └── ip_scanner_interface.py # IP scanner CLI
+│       ├── ip_scanner_interface.py # IP scanner CLI
+│       └── url_scanner_interface.py # URL scanner CLI
 ├── main.py                     # Entry point
 ├── requirements.txt            # Dependencies
 ├── setup.py                   # Package setup
@@ -350,6 +430,7 @@ text-manipulation-tool/
 - **InputHandler**: Manages text input from various sources
 - **DisplayManager**: Handles all display formatting and menus
 - **IPScannerInterface**: Dedicated interface for IP threat intelligence scanning
+- **URLScannerInterface**: Dedicated interface for URL threat intelligence scanning
 
 ### Menu System Design
 
