@@ -180,10 +180,21 @@ class ClipboardPoller:
         unfanged_ips = {self.network_extractor.unfang_ipv4(ip) for ip in defanged_ips}
         unfanged_urls = {self.network_extractor.unfang_url(url) for url in defanged_urls}
         
+        # Check if any unfanged "URLs" are actually IP addresses and reclassify them
+        actual_unfanged_urls = set()
+        additional_unfanged_ips = set()
+        
+        for unfanged_url in unfanged_urls:
+            # Check if this unfanged "URL" is actually an IP address
+            if self.network_extractor.extract_ipv4(unfanged_url):
+                additional_unfanged_ips.add(unfanged_url)
+            else:
+                actual_unfanged_urls.add(unfanged_url)
+        
         # Combine all similar IOCs (use unfanged versions for processing)
         all_hashes = sha256_hashes | sha1_hashes | md5_hashes
-        all_ips = ip_addresses | unfanged_ips
-        all_urls = urls | unfanged_urls
+        all_ips = ip_addresses | unfanged_ips | additional_unfanged_ips
+        all_urls = urls | actual_unfanged_urls
         
         # Filter out already processed IOCs
         new_hashes = all_hashes - self.processed_iocs
@@ -214,12 +225,22 @@ class ClipboardPoller:
         if new_ips:
             print(f"   Found {len(new_ips)} new IP address(es)")
             for ip in new_ips:
-                # Check if this IP was originally defanged
+                # Check if this IP was originally defanged (either as IP or misclassified as URL)
                 original_defanged = None
+                
+                # First check defanged IPs
                 for defanged_ip in defanged_ips:
                     if self.network_extractor.unfang_ipv4(defanged_ip) == ip:
                         original_defanged = defanged_ip
                         break
+                
+                # If not found, check defanged URLs that were reclassified as IPs
+                if not original_defanged:
+                    for defanged_url in defanged_urls:
+                        if self.network_extractor.unfang_url(defanged_url) == ip:
+                            original_defanged = defanged_url
+                            break
+                
                 tasks.append(self._analyze_ip(ip, original_defanged))
         
         if new_urls:
