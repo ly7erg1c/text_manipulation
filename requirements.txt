@@ -3,4 +3,6 @@ requests>=2.31.0
 python-dotenv>=1.0.0
 aiohttp>=3.9.0
 tenacity>=8.2.3
-colorama>=0.4.6 
+colorama>=0.4.6
+rarfile>=4.0
+ipaddress>=1.0.23 
