@@ -13,21 +13,28 @@ from ..core.extractors import HashExtractor, NetworkExtractor, FileExtractor, Te
 from .input_handler import InputHandler
 from .display import DisplayManager
 from .ip_scanner_interface import IPScannerInterface
+from .url_scanner_interface import URLScannerInterface
+from .polling_interface import PollingInterface
+from ..core.config import APIConfig
 
 
 class TextManipulationCLI:
     """Main CLI interface for the text manipulation tool."""
     
     def __init__(self):
-        self.text: str = ""
-        self.previous_output: str = ""
-        self.input_handler = InputHandler()
-        self.display = DisplayManager()
+        """Initialize CLI with all required components."""
         self.hash_extractor = HashExtractor()
         self.network_extractor = NetworkExtractor()
         self.file_extractor = FileExtractor()
         self.text_manipulator = TextManipulator()
+        self.input_handler = InputHandler()
+        self.display = DisplayManager()
         self.ip_scanner = IPScannerInterface()
+        self.url_scanner = URLScannerInterface()
+        self.polling_interface = PollingInterface()
+        self.config = APIConfig()
+        self.text = ""
+        self.previous_output = ""
     
     def display_main_menu(self) -> None:
         """Display main menu with categories."""
@@ -41,6 +48,7 @@ class TextManipulationCLI:
         print("4. Text Manipulation")
         print("5. Data Input/Management")
         print("6. API Configuration")
+        print("7. Polling Mode")
         print("0. Exit")
 
     def display_hash_menu(self) -> None:
@@ -64,6 +72,7 @@ class TextManipulationCLI:
         print("2. Extract URLs (with http/https)")
         print("3. Extract and defang URLs")
         print("4. IP Address Threat Intelligence Scanner")
+        print("5. URL Threat Intelligence Scanner")
         print("0. Back to main menu")
 
     def display_file_menu(self) -> None:
@@ -135,6 +144,8 @@ class TextManipulationCLI:
                 self._handle_data_menu()
             elif choice == '6':
                 self._handle_api_menu()
+            elif choice == '7':
+                self._handle_polling_menu()
             else:
                 print("Invalid option, please try again.")
 
@@ -175,6 +186,10 @@ class TextManipulationCLI:
             elif choice == '4':
                 self.display.clear_screen()
                 self.ip_scanner.run()
+                input("\nPress Enter to continue...")
+            elif choice == '5':
+                self.display.clear_screen()
+                self.url_scanner.run()
                 input("\nPress Enter to continue...")
             elif choice in ['1', '2', '3']:
                 if not self._ensure_text_available():
@@ -276,6 +291,12 @@ class TextManipulationCLI:
                 self._clear_api_keys()
             else:
                 print("Invalid option, please try again.")
+
+    def _handle_polling_menu(self) -> None:
+        """Handle clipboard polling submenu."""
+        self.display.clear_screen()
+        self.polling_interface.run()
+        input("\nPress Enter to continue...")
 
     def _ensure_text_available(self) -> bool:
         """

@@ -46,8 +46,8 @@ class AbuseIPDBClient:
         url = f"{self.BASE_URL}/check"
         params = {
             "ipAddress": ip_address,
-            "maxAgeInDays": 90,  # Check last 90 days
-            "verbose": True
+            "maxAgeInDays": "90",  # Check last 90 days - string format
+            "verbose": ""  # Empty string enables verbose mode
         }
         
         async with aiohttp.ClientSession() as session:
