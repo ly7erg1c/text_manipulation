@@ -15,6 +15,7 @@ from .display import DisplayManager
 from .ip_scanner_interface import IPScannerInterface
 from .url_scanner_interface import URLScannerInterface
 from .polling_interface import PollingInterface
+from .defang_interface import DefangInterface
 from ..core.config import APIConfig
 
 
@@ -32,6 +33,7 @@ class TextManipulationCLI:
         self.ip_scanner = IPScannerInterface()
         self.url_scanner = URLScannerInterface()
         self.polling_interface = PollingInterface()
+        self.defang_interface = DefangInterface()
         self.config = APIConfig()
         self.text = ""
         self.previous_output = ""
@@ -49,6 +51,7 @@ class TextManipulationCLI:
         print("5. Data Input/Management")
         print("6. API Configuration")
         print("7. Polling Mode")
+        print("8. Defang/Unfang Utility")
         print("0. Exit")
 
     def display_hash_menu(self) -> None:
@@ -71,8 +74,10 @@ class TextManipulationCLI:
         print("1. Extract IPv4 addresses")
         print("2. Extract URLs (with http/https)")
         print("3. Extract and defang URLs")
-        print("4. IP Address Threat Intelligence Scanner")
-        print("5. URL Threat Intelligence Scanner")
+        print("4. Extract defanged IPv4 addresses")
+        print("5. Extract defanged URLs")
+        print("6. IP Address Threat Intelligence Scanner")
+        print("7. URL Threat Intelligence Scanner")
         print("0. Back to main menu")
 
     def display_file_menu(self) -> None:
@@ -146,6 +151,8 @@ class TextManipulationCLI:
                 self._handle_api_menu()
             elif choice == '7':
                 self._handle_polling_menu()
+            elif choice == '8':
+                self._handle_defang_menu()
             else:
                 print("Invalid option, please try again.")
 
@@ -183,15 +190,15 @@ class TextManipulationCLI:
             
             if choice == '0':
                 break
-            elif choice == '4':
+            elif choice == '6':
                 self.display.clear_screen()
                 self.ip_scanner.run()
                 input("\nPress Enter to continue...")
-            elif choice == '5':
+            elif choice == '7':
                 self.display.clear_screen()
                 self.url_scanner.run()
                 input("\nPress Enter to continue...")
-            elif choice in ['1', '2', '3']:
+            elif choice in ['1', '2', '3', '4', '5']:
                 if not self._ensure_text_available():
                     continue
                     
@@ -203,6 +210,12 @@ class TextManipulationCLI:
                     self._display_and_store_output(result)
                 elif choice == '3':
                     result = self.network_extractor.defang_urls(self.text)
+                    self._display_and_store_output(result)
+                elif choice == '4':
+                    result = self.network_extractor.extract_defanged_ipv4(self.text)
+                    self._display_and_store_output(result)
+                elif choice == '5':
+                    result = self.network_extractor.extract_defanged_urls(self.text)
                     self._display_and_store_output(result)
                 
                 input("\nPress Enter to continue...")
@@ -296,6 +309,12 @@ class TextManipulationCLI:
         """Handle clipboard polling submenu."""
         self.display.clear_screen()
         self.polling_interface.run()
+        input("\nPress Enter to continue...")
+
+    def _handle_defang_menu(self) -> None:
+        """Handle defang/unfang utility submenu."""
+        self.display.clear_screen()
+        self.defang_interface.run()
         input("\nPress Enter to continue...")
 
     def _ensure_text_available(self) -> bool:

@@ -163,20 +163,32 @@ class ClipboardPoller:
             # Process up to limit_poll lines
             content_to_process = '\n'.join(lines[:self.limit_poll])
         
-        # Extract IOCs from the limited content
+        # Extract IOCs from the limited content (including defanged ones)
         sha256_hashes = self.hash_extractor.extract_sha256(content_to_process)
         sha1_hashes = self.hash_extractor.extract_sha1(content_to_process)
         md5_hashes = self.hash_extractor.extract_md5(content_to_process)
-        ip_addresses = self.network_extractor.extract_ipv4(content_to_process)
-        urls = self.network_extractor.extract_urls(content_to_process)
         
-        # Combine all hashes
+        # Extract both normal and defanged IP addresses
+        ip_addresses = self.network_extractor.extract_ipv4(content_to_process)
+        defanged_ips = self.network_extractor.extract_defanged_ipv4(content_to_process)
+        
+        # Extract both normal and defanged URLs
+        urls = self.network_extractor.extract_urls(content_to_process)
+        defanged_urls = self.network_extractor.extract_defanged_urls(content_to_process)
+        
+        # Unfang defanged IOCs for analysis and tracking
+        unfanged_ips = {self.network_extractor.unfang_ipv4(ip) for ip in defanged_ips}
+        unfanged_urls = {self.network_extractor.unfang_url(url) for url in defanged_urls}
+        
+        # Combine all similar IOCs (use unfanged versions for processing)
         all_hashes = sha256_hashes | sha1_hashes | md5_hashes
+        all_ips = ip_addresses | unfanged_ips
+        all_urls = urls | unfanged_urls
         
         # Filter out already processed IOCs
         new_hashes = all_hashes - self.processed_iocs
-        new_ips = ip_addresses - self.processed_iocs
-        new_urls = urls - self.processed_iocs
+        new_ips = all_ips - self.processed_iocs
+        new_urls = all_urls - self.processed_iocs
         
         # Only show message and process if there are new IOCs
         if not new_hashes and not new_ips and not new_urls:
@@ -184,6 +196,12 @@ class ClipboardPoller:
         
         # Now show message since we have new IOCs
         print(f"\n[{datetime.now().strftime('%H:%M:%S')}] New IOCs detected in clipboard...")
+        
+        # Show detection details
+        if defanged_ips:
+            print(f"   Found {len(defanged_ips)} defanged IP address(es) (will be unfanged for analysis)")
+        if defanged_urls:
+            print(f"   Found {len(defanged_urls)} defanged URL(s) (will be unfanged for analysis)")
         
         # Process new IOCs
         tasks = []
@@ -196,18 +214,30 @@ class ClipboardPoller:
         if new_ips:
             print(f"   Found {len(new_ips)} new IP address(es)")
             for ip in new_ips:
-                tasks.append(self._analyze_ip(ip))
+                # Check if this IP was originally defanged
+                original_defanged = None
+                for defanged_ip in defanged_ips:
+                    if self.network_extractor.unfang_ipv4(defanged_ip) == ip:
+                        original_defanged = defanged_ip
+                        break
+                tasks.append(self._analyze_ip(ip, original_defanged))
         
         if new_urls:
             print(f"   Found {len(new_urls)} new URL(s)")
             for url in new_urls:
-                tasks.append(self._analyze_url(url))
+                # Check if this URL was originally defanged
+                original_defanged = None
+                for defanged_url in defanged_urls:
+                    if self.network_extractor.unfang_url(defanged_url) == url:
+                        original_defanged = defanged_url
+                        break
+                tasks.append(self._analyze_url(url, original_defanged))
         
         # Process all IOCs concurrently
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
         
-        # Update processed IOCs
+        # Update processed IOCs (track unfanged versions)
         self.processed_iocs.update(new_hashes)
         self.processed_iocs.update(new_ips)
         self.processed_iocs.update(new_urls)
@@ -234,16 +264,19 @@ class ClipboardPoller:
         except Exception as e:
             print(f"   ERROR: Error analyzing hash: {e}")
     
-    async def _analyze_ip(self, ip_address: str) -> None:
+    async def _analyze_ip(self, ip_address: str, original_defanged: Optional[str] = None) -> None:
         """
         Analyze an IP address using threat intelligence APIs.
         
         Args:
             ip_address: IP address to analyze
+            original_defanged: Original defanged IP address
         """
         self.stats["total_ips_processed"] += 1
         
         print(f"\nIP ANALYSIS: {ip_address}")
+        if original_defanged:
+            print(f"   (Original defanged format: {original_defanged})")
         print("   " + "─" * 60)
         
         # Run all available IP checks in parallel
@@ -273,21 +306,24 @@ class ClipboardPoller:
                 if isinstance(result, Exception):
                     print(f"   ERROR {service_name}: {result}")
                 else:
-                    self._display_ip_result(service_name, result, ip_address)
+                    self._display_ip_result(service_name, result, ip_address, original_defanged)
                     
         except Exception as e:
             print(f"   ERROR: Error analyzing IP: {e}")
     
-    async def _analyze_url(self, url: str) -> None:
+    async def _analyze_url(self, url: str, original_defanged: Optional[str] = None) -> None:
         """
         Analyze a URL using threat intelligence APIs.
         
         Args:
             url: URL to analyze
+            original_defanged: Original defanged URL
         """
         self.stats["total_urls_processed"] += 1
         
         print(f"\nURL ANALYSIS: {url}")
+        if original_defanged:
+            print(f"   (Original defanged format: {original_defanged})")
         print("   " + "─" * 60)
         
         if not self.virustotal_client:
@@ -296,7 +332,7 @@ class ClipboardPoller:
         
         try:
             result = await self.virustotal_client.check_url_reputation(url)
-            self._display_url_result(result)
+            self._display_url_result(result, original_defanged)
         except Exception as e:
             print(f"   ERROR: Error analyzing URL: {e}")
     
@@ -361,7 +397,7 @@ class ClipboardPoller:
                 size_kb = result["file_size"] / 1024
                 print(f"   Size: {size_kb:.2f} KB")
     
-    def _display_ip_result(self, service: str, result: Dict[str, Any], ip_address: str) -> None:
+    def _display_ip_result(self, service: str, result: Dict[str, Any], ip_address: str, original_defanged: Optional[str] = None) -> None:
         """
         Display IP analysis results in a clean format.
         
@@ -369,6 +405,7 @@ class ClipboardPoller:
             service: Name of the service that provided the result
             result: Analysis result
             ip_address: IP address being analyzed
+            original_defanged: Original defanged IP address
         """
         if "error" in result:
             print(f"   {Color.RED}ERROR {service}: {result['error']}{Color.RESET}")
@@ -451,12 +488,13 @@ class ClipboardPoller:
             if result.get("timezone"):
                 print(f"      Timezone: {result['timezone']}")
     
-    def _display_url_result(self, result: Dict[str, Any]) -> None:
+    def _display_url_result(self, result: Dict[str, Any], original_defanged: Optional[str] = None) -> None:
         """
         Display URL analysis results in a clean format.
         
         Args:
             result: URL analysis result from VirusTotal
+            original_defanged: Original defanged URL
         """
         if "error" in result:
             print(f"   {Color.RED}ERROR: {result['error']}{Color.RESET}")
