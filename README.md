@@ -2,6 +2,41 @@
 
 A command-line utility for extracting and manipulating various types of data from text. This tool is designed for cybersecurity professionals, developers, and anyone who needs to quickly extract structured data from unstructured text.
 
+## Table of Contents
+
+- [Features](#features)
+- [Installation](#installation)
+  - [Prerequisites](#prerequisites)
+  - [Quick Installation](#quick-installation)
+  - [Development Installation](#development-installation)
+- [Usage](#usage)
+  - [Basic Usage](#basic-usage)
+  - [Input Options](#input-options)
+  - [Menu Navigation](#menu-navigation)
+  - [Enhanced Features](#enhanced-features)
+  - [Examples](#examples)
+- [API Configuration](#api-configuration)
+  - [Supported Services](#supported-services)
+  - [Setting Up API Keys](#setting-up-api-keys)
+  - [API Key Features](#api-key-features)
+- [Architecture](#architecture)
+  - [Key Components](#key-components)
+  - [Menu System Design](#menu-system-design)
+- [Contributing](#contributing)
+  - [Types of Contributions](#types-of-contributions)
+  - [Development Setup](#development-setup)
+  - [Adding New Extractors](#adding-new-extractors)
+  - [Adding New Menu Categories](#adding-new-menu-categories)
+  - [Code Style](#code-style)
+  - [Testing](#testing)
+- [Dependencies](#dependencies)
+- [Configuration](#configuration)
+- [Troubleshooting](#troubleshooting)
+  - [Common Issues](#common-issues)
+  - [Performance Considerations](#performance-considerations)
+- [Roadmap](#roadmap)
+- [License](#license)
+
 ## Features
 
 - **Hash Extraction**: Extract cryptographic hashes (MD5, SHA1, SHA256) from text
