@@ -17,6 +17,7 @@ from .api_clients.virustotal import VirusTotalClient
 from .api_clients.abuseipdb import AbuseIPDBClient
 from .api_clients.ipinfo import IPInfoClient
 from .config import APIConfig
+from ..cli.display import Color
 
 
 class ClipboardPoller:
@@ -33,14 +34,16 @@ class ClipboardPoller:
     Automatically performs threat intelligence lookups and streams results.
     """
     
-    def __init__(self, poll_interval: float = 2.0):
+    def __init__(self, poll_interval: float = 2.0, limit_poll: int = 1):
         """
         Initialize clipboard poller.
         
         Args:
             poll_interval: How often to check clipboard (seconds)
+            limit_poll: Maximum number of lines to scan from clipboard (default: 1)
         """
         self.poll_interval = poll_interval
+        self.limit_poll = limit_poll
         self.last_clipboard_content = ""
         self.processed_iocs = set()  # Track already processed IOCs
         self.is_running = False
@@ -108,6 +111,7 @@ class ClipboardPoller:
         
         print(f"   APIs: {' | '.join(api_status)}")
         print(f"   Poll interval: {self.poll_interval}s")
+        print(f"   Scan limit: {'First line only' if self.limit_poll == 1 else f'First {self.limit_poll} lines'}")
         print("\n" + "-" * 80)
         
         # Initialize last_clipboard_content with current clipboard to avoid processing initial content
@@ -150,12 +154,21 @@ class ClipboardPoller:
         Args:
             content: Current clipboard content
         """
-        # Extract IOCs first
-        sha256_hashes = self.hash_extractor.extract_sha256(content)
-        sha1_hashes = self.hash_extractor.extract_sha1(content)
-        md5_hashes = self.hash_extractor.extract_md5(content)
-        ip_addresses = self.network_extractor.extract_ipv4(content)
-        urls = self.network_extractor.extract_urls(content)
+        # Limit content to specified number of lines
+        lines = content.split('\n')
+        if self.limit_poll == 1:
+            # Only process the first line
+            content_to_process = lines[0] if lines else ""
+        else:
+            # Process up to limit_poll lines
+            content_to_process = '\n'.join(lines[:self.limit_poll])
+        
+        # Extract IOCs from the limited content
+        sha256_hashes = self.hash_extractor.extract_sha256(content_to_process)
+        sha1_hashes = self.hash_extractor.extract_sha1(content_to_process)
+        md5_hashes = self.hash_extractor.extract_md5(content_to_process)
+        ip_addresses = self.network_extractor.extract_ipv4(content_to_process)
+        urls = self.network_extractor.extract_urls(content_to_process)
         
         # Combine all hashes
         all_hashes = sha256_hashes | sha1_hashes | md5_hashes
@@ -295,23 +308,42 @@ class ClipboardPoller:
             result: Hash analysis result from VirusTotal
         """
         if "error" in result:
-            print(f"   ERROR: {result['error']}")
+            print(f"   {Color.RED}ERROR: {result['error']}{Color.RESET}")
             return
         
         reputation = result.get("reputation_score", "Unknown")
         stats = result.get("reputation_stats", {})
+        malicious_count = stats.get('malicious', 0)
+        total_count = sum(stats.values()) if stats else 0
         
-        # Choose appropriate status indicator
+        # Choose appropriate status indicator and color based on maliciousness
         if reputation == "Malicious":
-            status_indicator = "[MALICIOUS]"
+            if malicious_count >= 10:
+                status_indicator = f"{Color.RED}[MALICIOUS]{Color.RESET}"
+            elif malicious_count >= 5:
+                status_indicator = f"{Color.YELLOW}[MALICIOUS]{Color.RESET}"
+            else:
+                status_indicator = f"{Color.YELLOW}[MALICIOUS]{Color.RESET}"
             self.stats["malicious_hashes"] += 1
         elif reputation == "Suspicious":
-            status_indicator = "[SUSPICIOUS]"
+            if malicious_count >= 3:
+                status_indicator = f"{Color.YELLOW}[SUSPICIOUS]{Color.RESET}"
+            else:
+                status_indicator = f"{Color.CYAN}[SUSPICIOUS]{Color.RESET}"
         else:
-            status_indicator = "[CLEAN]"
+            status_indicator = f"{Color.GREEN}[CLEAN]{Color.RESET}"
         
         print(f"   Status: {status_indicator} {reputation}")
-        print(f"   Detections: {stats.get('malicious', 0)}/{sum(stats.values())} engines")
+        
+        # Color the detection count based on threat level
+        if malicious_count == 0:
+            detection_color = Color.GREEN
+        elif malicious_count <= 3:
+            detection_color = Color.YELLOW
+        else:
+            detection_color = Color.RED
+        
+        print(f"   Detections: {detection_color}{malicious_count}/{total_count}{Color.RESET} engines")
         
         if result.get("file_type"):
             print(f"   Type: {result['file_type']}")
@@ -339,7 +371,7 @@ class ClipboardPoller:
             ip_address: IP address being analyzed
         """
         if "error" in result:
-            print(f"   ERROR {service}: {result['error']}")
+            print(f"   {Color.RED}ERROR {service}: {result['error']}{Color.RESET}")
             return
         
         print(f"   {service}:")
@@ -347,16 +379,36 @@ class ClipboardPoller:
         if service == "VirusTotal":
             reputation = result.get("reputation_score", "Unknown")
             stats = result.get("reputation_stats", {})
+            malicious_count = stats.get('malicious', 0)
+            total_count = sum(stats.values()) if stats else 0
             
             if reputation == "Malicious":
-                print(f"      Status: [MALICIOUS] {reputation}")
+                if malicious_count >= 10:
+                    status_display = f"{Color.RED}[MALICIOUS]{Color.RESET} {reputation}"
+                elif malicious_count >= 5:
+                    status_display = f"{Color.YELLOW}[MALICIOUS]{Color.RESET} {reputation}"
+                else:
+                    status_display = f"{Color.YELLOW}[MALICIOUS]{Color.RESET} {reputation}"
                 self.stats["malicious_ips"] += 1
             elif reputation == "Suspicious":
-                print(f"      Status: [SUSPICIOUS] {reputation}")
+                if malicious_count >= 3:
+                    status_display = f"{Color.YELLOW}[SUSPICIOUS]{Color.RESET} {reputation}"
+                else:
+                    status_display = f"{Color.CYAN}[SUSPICIOUS]{Color.RESET} {reputation}"
             else:
-                print(f"      Status: [CLEAN] {reputation}")
+                status_display = f"{Color.GREEN}[CLEAN]{Color.RESET} {reputation}"
             
-            print(f"      Detections: {stats.get('malicious', 0)}/{sum(stats.values())} engines")
+            print(f"      Status: {status_display}")
+            
+            # Color the detection count
+            if malicious_count == 0:
+                detection_color = Color.GREEN
+            elif malicious_count <= 3:
+                detection_color = Color.YELLOW
+            else:
+                detection_color = Color.RED
+            
+            print(f"      Detections: {detection_color}{malicious_count}/{total_count}{Color.RESET} engines")
             
             if result.get("country"):
                 print(f"      Country: {result['country']}")
@@ -367,20 +419,29 @@ class ClipboardPoller:
             confidence = result.get("abuse_confidence_score", 0)
             
             if confidence > 75:
-                print(f"      Abuse Confidence: [HIGH] {confidence}%")
+                confidence_display = f"{Color.RED}[HIGH] {confidence}%{Color.RESET}"
                 if ip_address not in [result.get("ip") for result in [r for r in [result] if r.get("ip")]]:
                     self.stats["malicious_ips"] += 1
             elif confidence > 25:
-                print(f"      Abuse Confidence: [MEDIUM] {confidence}%")
+                confidence_display = f"{Color.YELLOW}[MEDIUM] {confidence}%{Color.RESET}"
             else:
-                print(f"      Abuse Confidence: [LOW] {confidence}%")
+                confidence_display = f"{Color.GREEN}[LOW] {confidence}%{Color.RESET}"
+            
+            print(f"      Abuse Confidence: {confidence_display}")
             
             if result.get("country_code") and result.get("country_code") != "Unknown":
                 print(f"      Country: {result['country_code']}")
             if result.get("usage_type") and result.get("usage_type") != "Unknown":
                 print(f"      Usage: {result['usage_type']}")
             if result.get("total_reports", 0) > 0:
-                print(f"      Total Reports: {result['total_reports']}")
+                reports_count = result['total_reports']
+                if reports_count > 100:
+                    reports_color = Color.RED
+                elif reports_count > 10:
+                    reports_color = Color.YELLOW
+                else:
+                    reports_color = Color.CYAN
+                print(f"      Total Reports: {reports_color}{reports_count}{Color.RESET}")
         
         elif service == "IPInfo":
             if result.get("country"):
@@ -398,23 +459,42 @@ class ClipboardPoller:
             result: URL analysis result from VirusTotal
         """
         if "error" in result:
-            print(f"   ERROR: {result['error']}")
+            print(f"   {Color.RED}ERROR: {result['error']}{Color.RESET}")
             return
         
         reputation = result.get("reputation_score", "Unknown")
         stats = result.get("reputation_stats", {})
+        malicious_count = stats.get('malicious', 0)
+        total_count = sum(stats.values()) if stats else 0
         
-        # Choose appropriate status indicator
+        # Choose appropriate status indicator and color
         if reputation == "Malicious":
-            status_indicator = "[MALICIOUS]"
+            if malicious_count >= 10:
+                status_indicator = f"{Color.RED}[MALICIOUS]{Color.RESET}"
+            elif malicious_count >= 5:
+                status_indicator = f"{Color.YELLOW}[MALICIOUS]{Color.RESET}"
+            else:
+                status_indicator = f"{Color.YELLOW}[MALICIOUS]{Color.RESET}"
             self.stats["malicious_urls"] += 1
         elif reputation == "Suspicious":
-            status_indicator = "[SUSPICIOUS]"
+            if malicious_count >= 3:
+                status_indicator = f"{Color.YELLOW}[SUSPICIOUS]{Color.RESET}"
+            else:
+                status_indicator = f"{Color.CYAN}[SUSPICIOUS]{Color.RESET}"
         else:
-            status_indicator = "[CLEAN]"
+            status_indicator = f"{Color.GREEN}[CLEAN]{Color.RESET}"
         
         print(f"   Status: {status_indicator} {reputation}")
-        print(f"   Detections: {stats.get('malicious', 0)}/{sum(stats.values())} engines")
+        
+        # Color the detection count
+        if malicious_count == 0:
+            detection_color = Color.GREEN
+        elif malicious_count <= 3:
+            detection_color = Color.YELLOW
+        else:
+            detection_color = Color.RED
+        
+        print(f"   Detections: {detection_color}{malicious_count}/{total_count}{Color.RESET} engines")
         
         if result.get("title") and result.get("title") != "Unknown":
             print(f"   Title: {result['title']}")
@@ -430,7 +510,7 @@ class ClipboardPoller:
         if result.get("threat_names"):
             threat_names = result["threat_names"][:3]  # Show first 3 threat names
             if threat_names:
-                print(f"   Threats: {', '.join(threat_names)}")
+                print(f"   Threats: {Color.RED}{', '.join(threat_names)}{Color.RESET}")
     
     def _show_session_summary(self) -> None:
         """Display session summary statistics."""

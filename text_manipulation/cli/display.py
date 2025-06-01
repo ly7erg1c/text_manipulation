@@ -8,6 +8,14 @@ output formatting, and screen management.
 import os
 import platform
 
+# Initialize colorama for cross-platform color support
+try:
+    import colorama
+    colorama.init(autoreset=True)
+except ImportError:
+    # Colorama not available, colors will work on Unix-like systems
+    pass
+
 
 class Color:
     """ANSI color codes for terminal output."""
