@@ -2,6 +2,8 @@
 
 A command-line utility for extracting and manipulating various types of data from text. This tool is designed for cybersecurity professionals, developers, and anyone who needs to quickly extract structured data from unstructured text.
 
+**Important Privacy Notice**: This tool only queries existing threat intelligence data from external APIs. No user data, hashes, IP addresses, or URLs are ever posted or submitted to VirusTotal or AbuseIPDB APIs. The tool performs read-only queries against their existing intelligence databases. If information about a specific artifact is not present in their intelligence corpus, the tool will return no result for that artifact.
+
 ## Table of Contents
 
 - [Features](#features)
@@ -17,6 +19,7 @@ A command-line utility for extracting and manipulating various types of data fro
   - [Examples](#examples)
 - [API Configuration](#api-configuration)
   - [Supported Services](#supported-services)
+  - [Privacy and Data Handling](#privacy-and-data-handling)
   - [Setting Up API Keys](#setting-up-api-keys)
   - [API Key Features](#api-key-features)
 - [Architecture](#architecture)
@@ -40,8 +43,8 @@ A command-line utility for extracting and manipulating various types of data fro
 
 - **Hash Extraction**: Extract cryptographic hashes (MD5, SHA1, SHA256) from text
 - **Network Data Extraction**: Find IPv4 addresses and URLs (with defanging support)
-- **IP Threat Intelligence**: Scan IP addresses for threat intelligence
-- **URL Threat Intelligence**: Scan URLs for malware and reputation analysis via VirusTotal
+- **IP Threat Intelligence**: Scan IP addresses for threat intelligence (read-only queries)
+- **URL Threat Intelligence**: Scan URLs for malware and reputation analysis via VirusTotal (read-only queries)
 - **Polling Mode**: Automatically watch clipboard for hashes, IPs, and URLs with real-time threat intelligence analysis
 - **File Reference Extraction**: Locate executable file references (.exe, .bat, .cmd, .sh, .bin)
 - **Text Manipulation**: Convert newlines to spaces, remove blank lines
@@ -304,19 +307,21 @@ Results:
 #### IP Threat Intelligence Scanning
 
 The tool includes an integrated IP scanner that can:
-- Check multiple threat intelligence sources
-- Analyze IP reputation and geolocation
-- Provide detailed threat reports
+- Check multiple threat intelligence sources using read-only API queries
+- Analyze IP reputation and geolocation from existing databases
+- Provide detailed threat reports based on historical data
 - Support bulk IP scanning
+- **Privacy Note**: No IP addresses are submitted to external services; only queries against existing intelligence databases are performed
 
 #### URL Threat Intelligence Scanning
 
 The tool includes URL analysis capabilities that can:
-- Check URLs against VirusTotal's database
-- Analyze URL reputation and categories
-- Detect malicious and suspicious URLs
+- Check URLs against VirusTotal's existing database using read-only queries
+- Analyze URL reputation and categories from historical data
+- Detect malicious and suspicious URLs based on existing intelligence
 - Process single URLs or bulk lists
 - Extract URLs from clipboard content
+- **Privacy Note**: No URLs are submitted for analysis; only queries against existing VirusTotal intelligence corpus are performed
 
 Example URL scan output:
 ```
@@ -329,25 +334,45 @@ URL: https://malicious-example.com
 
 ### API Configuration
 
-The tool supports integration with multiple threat intelligence services. You can configure API keys through the interactive menu or environment variables.
+The tool supports integration with multiple threat intelligence services through read-only API queries. You can configure API keys through the interactive menu or environment variables.
+
+**Important**: This tool only performs read-only queries against existing threat intelligence databases. No user data is ever submitted, posted, or uploaded to any external services.
 
 #### Supported Services
 
 1. **IPInfo** (Optional)
-   - Provides enhanced IP geolocation and threat intelligence data
+   - Provides enhanced IP geolocation and threat intelligence data through read-only queries
    - Free tier: 50,000 requests/month without API key
    - Enhanced features with paid API key
    - Get your API key at: https://ipinfo.io/signup
 
 2. **VirusTotal** (Required for IP scanning and URL analysis)
-   - Provides malware and threat intelligence data
+   - Provides malware and threat intelligence data through read-only database queries
    - Required for IP scanning and URL analysis functionality
+   - **Privacy Guarantee**: Only performs GET requests to query existing data; never submits user data
    - Get your API key at: https://www.virustotal.com/gui/join-us
 
 3. **AbuseIPDB** (Required for IP scanning)
-   - Provides IP abuse and reputation data
+   - Provides IP abuse and reputation data through read-only database queries
    - Required for IP scanning functionality
+   - **Privacy Guarantee**: Only performs GET requests to query existing data; never submits user data
    - Get your API key at: https://www.abuseipdb.com/register
+
+#### Privacy and Data Handling
+
+**Critical Privacy Information:**
+
+- **No Data Submission**: This tool never submits, posts, or uploads any user data to external APIs
+- **Read-Only Queries**: All API interactions are strictly read-only GET requests to query existing intelligence databases
+- **Local Processing**: All data extraction and manipulation occurs locally on your machine
+- **No Logging**: User data is never logged or transmitted to external services
+- **Limited Results**: If an artifact (hash, IP, URL) is not present in the external intelligence corpus, the tool will return "not found" or "no result" rather than submitting the data for analysis
+
+**What This Means:**
+- Your hashes, IP addresses, and URLs remain private
+- No traces of your queries are left in external systems
+- The tool only checks if data already exists in public threat intelligence databases
+- Perfect for sensitive environments where data privacy is paramount
 
 #### Setting Up API Keys
 
@@ -375,9 +400,11 @@ Edit the `.env` file with your API keys:
 IPINFO_API_KEY=your_ipinfo_api_key_here
 
 # VirusTotal API Key (Required for IP scanning and URL analysis)
+# Used only for read-only queries against existing database
 VIRUSTOTAL_API_KEY=your_virustotal_api_key_here
 
 # AbuseIPDB API Key (Required for IP scanning)
+# Used only for read-only queries against existing database
 ABUSEIPDB_API_KEY=your_abuseipdb_api_key_here
 ```
 
@@ -388,6 +415,7 @@ ABUSEIPDB_API_KEY=your_abuseipdb_api_key_here
 - **Masked Display**: API keys are partially hidden when viewing configuration
 - **Validation**: Basic format validation when setting keys
 - **Secure Handling**: Keys are stored securely and never logged
+- **Read-Only Usage**: All API keys are used exclusively for read-only database queries
 
 ## Architecture
 
@@ -575,4 +603,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Note**: This tool is designed for legitimate security research and data analysis purposes. Always ensure you have proper authorization before analyzing data that doesn't belong to you.
+**Note**: This tool is designed for legitimate security research and data analysis purposes. Always ensure you have proper authorization before analyzing data that doesn't belong to you. The tool maintains strict privacy by never submitting user data to external services and only querying existing public threat intelligence databases.
