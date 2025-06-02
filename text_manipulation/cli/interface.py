@@ -9,7 +9,10 @@ import os
 from typing import Optional, Set, Union
 import pyperclip
 
-from ..core.extractors import HashExtractor, NetworkExtractor, FileExtractor, TextManipulator
+from ..core.extractors import (
+    HashExtractor, NetworkExtractor, FileExtractor, TextManipulator,
+    CryptocurrencyExtractor, SecurityExtractor, EmailExtractor
+)
 from .input_handler import InputHandler
 from .display import DisplayManager
 from .ip_scanner_interface import IPScannerInterface
@@ -28,6 +31,9 @@ class TextManipulationCLI:
         self.network_extractor = NetworkExtractor()
         self.file_extractor = FileExtractor()
         self.text_manipulator = TextManipulator()
+        self.crypto_extractor = CryptocurrencyExtractor()
+        self.security_extractor = SecurityExtractor()
+        self.email_extractor = EmailExtractor()
         self.input_handler = InputHandler()
         self.display = DisplayManager()
         self.ip_scanner = IPScannerInterface()
@@ -46,12 +52,15 @@ class TextManipulationCLI:
         print("\nSelect a category:")
         print("1. Hash Extraction")
         print("2. Network Analysis")
-        print("3. File Operations") 
-        print("4. Text Manipulation")
-        print("5. Data Input/Management")
-        print("6. API Configuration")
-        print("7. Polling Mode")
-        print("8. Defang/Unfang Utility")
+        print("3. Cryptocurrency Extraction")
+        print("4. Security Artifacts")
+        print("5. Email Extraction")
+        print("6. File Operations") 
+        print("7. Text Manipulation")
+        print("8. Data Input/Management")
+        print("9. API Configuration")
+        print("10. Polling Mode")
+        print("11. Defang/Unfang Utility")
         print("0. Exit")
 
     def display_hash_menu(self) -> None:
@@ -63,6 +72,7 @@ class TextManipulationCLI:
         print("1. Extract SHA256 hashes")
         print("2. Extract SHA1 hashes")
         print("3. Extract MD5 hashes")
+        print("4. Extract SSL certificate fingerprints")
         print("0. Back to main menu")
 
     def display_network_menu(self) -> None:
@@ -72,12 +82,49 @@ class TextManipulationCLI:
         print("=" * 60)
         print("\nSelect an option:")
         print("1. Extract IPv4 addresses")
-        print("2. Extract URLs (with http/https)")
-        print("3. Extract and defang URLs")
-        print("4. Extract defanged IPv4 addresses")
-        print("5. Extract defanged URLs")
-        print("6. IP Address Threat Intelligence Scanner")
-        print("7. URL Threat Intelligence Scanner")
+        print("2. Extract IPv6 addresses")
+        print("3. Extract URLs")
+        print("4. Extract domains")
+        print("5. Extract CIDR networks")
+        print("6. Extract ports")
+        print("7. Extract MAC addresses")
+        print("8. Extract ASN numbers")
+        print("9. Extract all network data")
+        print("10. IP Address Threat Intelligence Scanner")
+        print("11. URL Threat Intelligence Scanner")
+        print("0. Back to main menu")
+
+    def display_crypto_menu(self) -> None:
+        """Display cryptocurrency extraction submenu."""
+        print("\n" + "=" * 60)
+        print("           CRYPTOCURRENCY EXTRACTION")
+        print("=" * 60)
+        print("\nSelect an option:")
+        print("1. Extract Bitcoin addresses")
+        print("2. Extract Ethereum addresses")
+        print("3. Extract Litecoin addresses")
+        print("4. Extract Monero addresses")
+        print("5. Extract all cryptocurrency addresses")
+        print("0. Back to main menu")
+
+    def display_security_menu(self) -> None:
+        """Display security artifacts submenu."""
+        print("\n" + "=" * 60)
+        print("           SECURITY ARTIFACTS")
+        print("=" * 60)
+        print("\nSelect an option:")
+        print("1. Extract CVE identifiers")
+        print("2. Extract YARA rules")
+        print("3. Extract Windows registry keys")
+        print("0. Back to main menu")
+
+    def display_email_menu(self) -> None:
+        """Display email extraction submenu."""
+        print("\n" + "=" * 60)
+        print("           EMAIL EXTRACTION")
+        print("=" * 60)
+        print("\nSelect an option:")
+        print("1. Extract email addresses")
         print("0. Back to main menu")
 
     def display_file_menu(self) -> None:
@@ -142,16 +189,22 @@ class TextManipulationCLI:
             elif choice == '2':
                 self._handle_network_menu()
             elif choice == '3':
-                self._handle_file_menu()
+                self._handle_crypto_menu()
             elif choice == '4':
-                self._handle_text_menu()
+                self._handle_security_menu()
             elif choice == '5':
-                self._handle_data_menu()
+                self._handle_email_menu()
             elif choice == '6':
-                self._handle_api_menu()
+                self._handle_file_menu()
             elif choice == '7':
-                self._handle_polling_menu()
+                self._handle_text_menu()
             elif choice == '8':
+                self._handle_data_menu()
+            elif choice == '9':
+                self._handle_api_menu()
+            elif choice == '10':
+                self._handle_polling_menu()
+            elif choice == '11':
                 self._handle_defang_menu()
             else:
                 print("Invalid option, please try again.")
@@ -164,7 +217,7 @@ class TextManipulationCLI:
             
             if choice == '0':
                 break
-            elif choice in ['1', '2', '3']:
+            elif choice in ['1', '2', '3', '4']:
                 if not self._ensure_text_available():
                     continue
                     
@@ -176,6 +229,9 @@ class TextManipulationCLI:
                     self._display_and_store_output(result)
                 elif choice == '3':
                     result = self.hash_extractor.extract_md5(self.text)
+                    self._display_and_store_output(result)
+                elif choice == '4':
+                    result = self.hash_extractor.extract_ssl_certificate_fingerprints(self.text)
                     self._display_and_store_output(result)
                 
                 input("\nPress Enter to continue...")
@@ -190,15 +246,15 @@ class TextManipulationCLI:
             
             if choice == '0':
                 break
-            elif choice == '6':
+            elif choice == '10':
                 self.display.clear_screen()
                 self.ip_scanner.run()
                 input("\nPress Enter to continue...")
-            elif choice == '7':
+            elif choice == '11':
                 self.display.clear_screen()
                 self.url_scanner.run()
                 input("\nPress Enter to continue...")
-            elif choice in ['1', '2', '3', '4', '5']:
+            elif choice in ['1', '2', '3', '4', '5', '6', '7', '8', '9']:
                 if not self._ensure_text_available():
                     continue
                     
@@ -206,18 +262,106 @@ class TextManipulationCLI:
                     result = self.network_extractor.extract_ipv4(self.text)
                     self._display_and_store_output(result)
                 elif choice == '2':
-                    result = self.network_extractor.extract_urls(self.text)
+                    result = self.network_extractor.extract_ipv6(self.text)
                     self._display_and_store_output(result)
                 elif choice == '3':
-                    result = self.network_extractor.defang_urls(self.text)
+                    result = self.network_extractor.extract_urls(self.text)
                     self._display_and_store_output(result)
                 elif choice == '4':
-                    result = self.network_extractor.extract_defanged_ipv4(self.text)
+                    result = self.network_extractor.extract_domains(self.text)
                     self._display_and_store_output(result)
                 elif choice == '5':
-                    result = self.network_extractor.extract_defanged_urls(self.text)
+                    result = self.network_extractor.extract_cidr_networks(self.text)
+                    self._display_and_store_output(result)
+                elif choice == '6':
+                    result = self.network_extractor.extract_ports(self.text)
+                    self._display_and_store_output(result)
+                elif choice == '7':
+                    result = self.network_extractor.extract_mac_addresses(self.text)
+                    self._display_and_store_output(result)
+                elif choice == '8':
+                    result = NetworkExtractor.extract_asn(self.text)
+                    self._display_and_store_output(result)
+                elif choice == '9':
+                    result = NetworkExtractor.extract_all_network_data(self.text)
                     self._display_and_store_output(result)
                 
+                input("\nPress Enter to continue...")
+            else:
+                print("Invalid option, please try again.")
+
+    def _handle_crypto_menu(self) -> None:
+        """Handle cryptocurrency extraction submenu."""
+        while True:
+            self.display_crypto_menu()
+            choice = input("\nEnter your choice: ").strip()
+            
+            if choice == '0':
+                break
+            elif choice in ['1', '2', '3', '4', '5']:
+                if not self._ensure_text_available():
+                    continue
+                    
+                if choice == '1':
+                    result = CryptocurrencyExtractor.extract_bitcoin(self.text)
+                    self._display_and_store_output(result)
+                elif choice == '2':
+                    result = CryptocurrencyExtractor.extract_ethereum(self.text)
+                    self._display_and_store_output(result)
+                elif choice == '3':
+                    result = CryptocurrencyExtractor.extract_litecoin(self.text)
+                    self._display_and_store_output(result)
+                elif choice == '4':
+                    result = CryptocurrencyExtractor.extract_monero(self.text)
+                    self._display_and_store_output(result)
+                elif choice == '5':
+                    result = CryptocurrencyExtractor.extract_all_crypto(self.text)
+                    self._display_and_store_output(result)
+                
+                input("\nPress Enter to continue...")
+            else:
+                print("Invalid option, please try again.")
+
+    def _handle_security_menu(self) -> None:
+        """Handle security artifacts submenu."""
+        while True:
+            self.display_security_menu()
+            choice = input("\nEnter your choice: ").strip()
+            
+            if choice == '0':
+                break
+            elif choice in ['1', '2', '3']:
+                if not self._ensure_text_available():
+                    continue
+                    
+                if choice == '1':
+                    result = SecurityExtractor.extract_cve(self.text)
+                    self._display_and_store_output(result)
+                elif choice == '2':
+                    result = SecurityExtractor.extract_yara_rules(self.text)
+                    self._display_and_store_output(result)
+                elif choice == '3':
+                    result = SecurityExtractor.extract_registry_keys(self.text)
+                    self._display_and_store_output(result)
+                
+                input("\nPress Enter to continue...")
+            else:
+                print("Invalid option, please try again.")
+
+    def _handle_email_menu(self) -> None:
+        """Handle email extraction submenu."""
+        while True:
+            self.display_email_menu()
+            choice = input("\nEnter your choice: ").strip()
+            
+            if choice == '0':
+                break
+            elif choice == '1':
+                if not self._ensure_text_available():
+                    continue
+                    
+                result = EmailExtractor.extract_emails(self.text)
+                self._display_and_store_output(result)
                 input("\nPress Enter to continue...")
             else:
                 print("Invalid option, please try again.")
