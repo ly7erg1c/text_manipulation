@@ -2,9 +2,9 @@ name: Cross-Platform Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [ v2-dev ]
   pull_request:
-    branches: [ main ]
+    branches: [ v2-dev ]
   schedule:
     - cron: '0 6 * * 1'  # Weekly on Monday
 
@@ -27,12 +27,12 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
     - name: Cache pip packages
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cache/pip

@@ -2,9 +2,9 @@ name: Code Quality & Security
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, v2-dev ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, v2-dev ]
 
 jobs:
   code-quality:
@@ -13,12 +13,12 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
 
     - name: Cache pip packages
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-quality-${{ hashFiles('**/requirements*.txt') }}
@@ -42,7 +42,7 @@ jobs:
         safety check --json --output safety-report.json || true
 
     - name: Upload security reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: security-reports
         path: |
@@ -54,4 +54,4 @@ jobs:
     if: github.event_name == 'pull_request'
     steps:
     - name: Dependency Review
-      uses: actions/dependency-review-action@v3 
+      uses: actions/dependency-review-action@v4 
