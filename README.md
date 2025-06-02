@@ -19,7 +19,6 @@ A command-line utility for extracting and manipulating various types of data fro
   - [Examples](#examples)
 - [API Configuration](#api-configuration)
   - [Supported Services](#supported-services)
-  - [Privacy and Data Handling](#privacy-and-data-handling)
   - [Setting Up API Keys](#setting-up-api-keys)
   - [API Key Features](#api-key-features)
 - [Architecture](#architecture)
@@ -30,8 +29,6 @@ A command-line utility for extracting and manipulating various types of data fro
   - [Development Setup](#development-setup)
   - [Adding New Extractors](#adding-new-extractors)
   - [Adding New Menu Categories](#adding-new-menu-categories)
-  - [Code Style](#code-style)
-  - [Testing](#testing)
 - [Dependencies](#dependencies)
 - [Configuration](#configuration)
 - [Troubleshooting](#troubleshooting)
@@ -358,22 +355,6 @@ The tool supports integration with multiple threat intelligence services through
    - **Privacy Guarantee**: Only performs GET requests to query existing data; never submits user data
    - Get your API key at: https://www.abuseipdb.com/register
 
-#### Privacy and Data Handling
-
-**Critical Privacy Information:**
-
-- **No Data Submission**: This tool never submits, posts, or uploads any user data to external APIs
-- **Read-Only Queries**: All API interactions are strictly read-only GET requests to query existing intelligence databases
-- **Local Processing**: All data extraction and manipulation occurs locally on your machine
-- **No Logging**: User data is never logged or transmitted to external services
-- **Limited Results**: If an artifact (hash, IP, URL) is not present in the external intelligence corpus, the tool will return "not found" or "no result" rather than submitting the data for analysis
-
-**What This Means:**
-- Your hashes, IP addresses, and URLs remain private
-- No traces of your queries are left in external systems
-- The tool only checks if data already exists in public threat intelligence databases
-- Perfect for sensitive environments where data privacy is paramount
-
 #### Setting Up API Keys
 
 ##### Interactive Configuration (Recommended)
@@ -417,35 +398,6 @@ ABUSEIPDB_API_KEY=your_abuseipdb_api_key_here
 - **Secure Handling**: Keys are stored securely and never logged
 - **Read-Only Usage**: All API keys are used exclusively for read-only database queries
 
-## Architecture
-
-The project follows a modular, contributor-friendly structure:
-
-```
-text-manipulation-tool/
-├── text_manipulation/           # Main package
-│   ├── __init__.py             # Package initialization
-│   ├── core/                   # Core functionality
-│   │   ├── __init__.py
-│   │   ├── extractors.py       # Data extraction classes
-│   │   ├── ip_scanner.py       # IP threat intelligence
-│   │   ├── config.py           # Configuration management
-│   │   └── api_clients/        # External API integrations
-│   └── cli/                    # Command-line interface
-│       ├── __init__.py
-│       ├── interface.py        # Main CLI interface with sub-menus
-│       ├── input_handler.py    # Input handling
-│       ├── display.py          # Display management
-│       ├── ip_scanner_interface.py # IP scanner CLI
-│       └── url_scanner_interface.py # URL scanner CLI
-├── main.py                     # Entry point
-├── requirements.txt            # Dependencies
-├── setup.py                   # Package setup
-├── README.md                  # This file
-├── CONTRIBUTING.md            # Contribution guidelines
-├── LICENSE                    # License file
-├── .env.example              # Environment configuration template
-└── .gitignore                # Git ignore rules
 ```
 
 ### Key Components
@@ -519,30 +471,6 @@ To add a new menu category:
 4. Add the menu handler to the main run loop
 5. Follow the established pattern for navigation and user feedback
 
-### Code Style
-
-- Follow PEP 8 guidelines
-- Use type hints for all functions and methods
-- Add comprehensive docstrings to all public methods
-- Keep functions focused and small (Single Responsibility Principle)
-- Use descriptive variable names
-- Follow the established error handling patterns
-- Maintain consistency with the existing codebase structure
-
-### Testing
-
-```bash
-# Run basic functionality test
-python main.py
-
-# Test with sample data
-echo "Test hash: 5d41402abc4b2a76b9719d911017c592" | python main.py
-
-# Test individual modules
-python -m py_compile text_manipulation/cli/interface.py
-python -m py_compile text_manipulation/core/extractors.py
-```
-
 ## Dependencies
 
 - **pyperclip**: Clipboard operations (cross-platform)
@@ -602,5 +530,3 @@ cp .env.example .env
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
-
-**Note**: This tool is designed for legitimate security research and data analysis purposes. Always ensure you have proper authorization before analyzing data that doesn't belong to you. The tool maintains strict privacy by never submitting user data to external services and only querying existing public threat intelligence databases.
