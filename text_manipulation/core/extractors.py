@@ -194,6 +194,13 @@ class NetworkExtractor:
         # Pattern for domains without protocol
         domain_pattern = r'\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}\b'
         
+        # Executable extensions to exclude from domains
+        executable_extensions = {
+            'exe', 'bat', 'cmd', 'scr', 'pif', 'msi', 'jar',  # Windows
+            'sh', 'bin', 'run', 'app', 'deb', 'rpm', 'pkg',  # Unix/Linux
+            'apk', 'ipa', 'dmg', 'dll', 'so', 'dylib'        # Mobile/Libraries
+        }
+        
         # Common file extensions to exclude (but NOT common TLDs)
         file_extensions = {
             'txt', 'doc', 'docx', 'pdf', 'xls', 'xlsx', 'ppt', 'pptx',
@@ -225,7 +232,11 @@ class NetworkExtractor:
                 # Get the extension (last part after the last dot)
                 extension = match_lower.split('.')[-1]
                 
-                # Only filter out if it's a file extension AND not a common TLD
+                # Skip if it's an executable extension (regardless of whether it's also a TLD)
+                if extension in executable_extensions:
+                    continue
+                
+                # Skip if it's a file extension AND not a common TLD
                 if extension in file_extensions and extension not in common_tlds:
                     continue
                 
@@ -904,8 +915,7 @@ class FileExtractor:
             'ru', 'za', 'es', 'it', 'nl', 'pl', 'se', 'no', 'fi', 'dk',
             'io', 'me', 'tv', 'cc', 'ly', 'to', 'info', 'biz', 'name',
             'mobi', 'pro', 'aero', 'coop', 'museum', 'jobs', 'travel',
-            'xxx', 'tel', 'asia', 'cat', 'post', 'geo', 'local', 'localhost',
-            'evil'  # Adding custom TLD from your data
+            'xxx', 'tel', 'asia', 'cat', 'post', 'geo', 'local', 'localhost'
         }
         
         # Domain-like patterns to exclude
@@ -927,34 +937,37 @@ class FileExtractor:
                         base_name = '.'.join(parts[:-1])  # Everything except the extension
                         extension = parts[-1]
                         
-                        # Skip if this is clearly a domain pattern (domain.tld.extension)
-                        if len(parts) >= 3:
-                            potential_tld = parts[-2]
-                            if potential_tld in common_tlds:
-                                continue  # Skip domain.com.exe patterns
-                        
-                        # Skip if the base name contains domain indicators
-                        if any(indicator in base_name for indicator in domain_indicators):
-                            continue
-                        
-                        # Skip if the base name looks like a typical domain
-                        # (contains multiple dots or common domain patterns)
-                        if '.' in base_name:  # Has subdomain structure
-                            subdomain_parts = base_name.split('.')
-                            # Check if any part looks like a TLD
-                            if any(part in common_tlds for part in subdomain_parts):
+                        # Only apply domain filtering for .com extensions since that's ambiguous
+                        # For other executable extensions (.exe, .scr, .bat, etc.), be less strict
+                        if extension == 'com':
+                            # Skip if this is clearly a domain pattern (domain.tld.com)
+                            if len(parts) >= 3:
+                                potential_tld = parts[-2]
+                                if potential_tld in common_tlds:
+                                    continue  # Skip domain.com.com patterns
+                            
+                            # Skip if the base name contains domain indicators
+                            if any(indicator in base_name for indicator in domain_indicators):
                                 continue
-                        
-                        # Skip if it contains hyphens and looks domain-like
-                        if '-' in base_name:
-                            hyphen_parts = base_name.split('-')
-                            # If it has domain-like words or TLDs
-                            if any(part in common_tlds or part in domain_indicators for part in hyphen_parts):
+                            
+                            # Skip if the base name looks like a typical domain
+                            # (contains multiple dots or common domain patterns)
+                            if '.' in base_name:  # Has subdomain structure
+                                subdomain_parts = base_name.split('.')
+                                # Check if any part looks like a TLD
+                                if any(part in common_tlds for part in subdomain_parts):
+                                    continue
+                            
+                            # Skip if it contains hyphens and looks domain-like
+                            if '-' in base_name:
+                                hyphen_parts = base_name.split('-')
+                                # If it has domain-like words or TLDs
+                                if any(part in common_tlds or part in domain_indicators for part in hyphen_parts):
+                                    continue
+                            
+                            # Additional check: if base name is a single common word, it might be a domain
+                            if base_name in common_tlds:
                                 continue
-                        
-                        # Additional check: if base name is a single common word, it might be a domain
-                        if base_name in common_tlds:
-                            continue
                     
                     # If we get here, it's likely a legitimate executable
                     executables.add(match)
