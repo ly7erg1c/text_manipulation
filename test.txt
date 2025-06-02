@@ -1,0 +1,218 @@
+=== TEXT MANIPULATION TEST DATA ===
+
+This file contains various types of data for testing the extraction capabilities.
+
+=== HASH VALUES ===
+SHA256 hashes:
+a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae
+
+SHA1 hashes:
+356a192b7913b04c54574d18c28d46e6395428ab
+da39a3ee5e6b4b0d3255bfef95601890afd80709
+77de68daecd823babbb58edb1c8e14d7106e83bb
+
+MD5 hashes:
+5d41402abc4b2a76b9719d911017c592
+098f6bcd4621d373cade4e832627b4f6
+ad0234829205b9033196ba818f7a872b
+
+SSL Certificate Fingerprints:
+SHA256: 25:48:39:02:ce:11:85:59:87:b2:34:e6:7a:ce:15:21:90:f3:47:32:7e:96:2b:a8:cd:40:9a:54:ae:61:8e:76
+SHA1: ab:cd:ef:12:34:56:78:90:ab:cd:ef:12:34:56:78:90:ab:cd:ef:12
+MD5: 12:34:56:78:90:ab:cd:ef:12:34:56:78:90:ab:cd:ef
+
+=== NETWORK DATA ===
+IPv4 Addresses:
+192.168.1.1
+10.0.0.1
+172.16.254.1
+203.0.113.195
+198.51.100.14
+8.8.8.8
+1.1.1.1
+
+Defanged IPv4:
+192[.]168[.]1[.]100
+10[.]0[.]0[.]50
+172[.]16[.]254[.]200
+
+IPv6 Addresses:
+2001:0db8:85a3:0000:0000:8a2e:0370:7334
+2001:db8:85a3::8a2e:370:7334
+::1
+fe80::1%lo0
+2001:470:6c:266::2
+
+Defanged IPv6:
+2001[:]0db8[:]85a3[:]0000[:]0000[:]8a2e[:]0370[:]7335
+
+CIDR Networks:
+192.168.1.0/24
+10.0.0.0/8
+172.16.0.0/12
+203.0.113.0/24
+2001:db8::/32
+
+URLs:
+https://www.example.com/path/to/resource
+http://malicious-site.evil/payload.exe
+https://api.virustotal.com/vtapi/v2/file/report
+ftp://files.example.org/download/
+https://www.google.com:443/search?q=test
+
+Defanged URLs:
+hxxp://malicious-site[.]evil/payload[.]exe
+hxxps://bad[.]domain[.]com/malware[.]zip
+hxxp://192[.]168[.]1[.]100:8080/exploit
+
+Domains:
+example.com
+google.com
+malicious-domain.evil
+sub.domain.example.org
+test-site.co.uk
+
+Ports:
+port 80
+port 443
+port 22
+host.example.com:8080
+192.168.1.1:3389
+service on port 1433
+
+MAC Addresses:
+00:11:22:33:44:55
+AA-BB-CC-DD-EE-FF
+0011.2233.4455
+001122334455
+
+ASN Numbers:
+AS1234
+ASN15169
+AS 7922
+
+=== CRYPTOCURRENCY ADDRESSES ===
+Bitcoin Addresses:
+1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa
+3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy
+bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4
+
+Ethereum Addresses:
+0x742d35Cc6634C0532925a3b8D4b12A7b3bD92D70
+0xde0B295669a9FD93d5F28D9Ec85E40f4cb697BAe
+0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed
+
+Litecoin Addresses:
+LTC1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4
+LQTpS7Nq7vQ8F5nJ2X8XsR1XhG4D3KtL7X
+
+Monero Addresses:
+42ey1afDFnn4886T7196doS9GPMzexD9gXpsZJDwVjeRVdFCSoHnv7KPbBeGpzJBzHRCAs9UxqeoyFQMYbqSWYTfJJQAWDm
+
+=== SECURITY ARTIFACTS ===
+CVE Identifiers:
+CVE-2021-44228
+CVE-2017-5638
+CVE-2014-6271
+CVE-2019-0708
+
+YARA Rules:
+rule MalwareDetection {
+    meta:
+        description = "Detects malware"
+        author = "Security Team"
+    strings:
+        $string1 = "malicious_string"
+        $string2 = {6D 61 6C 77 61 72 65}
+    condition:
+        any of them
+}
+
+Windows Registry Keys:
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\Malware
+HKLM\SYSTEM\CurrentControlSet\Services\BadService
+HKEY_CURRENT_USER\Software\Classes\exefile\shell\open\command
+HKCU\Environment\UserInitMprLogonScript
+
+=== EMAIL ADDRESSES ===
+Standard Emails:
+admin@example.com
+user@malicious-domain.evil
+security@company.org
+test.user+tag@sub.domain.co.uk
+
+Defanged Emails:
+admin[@]example[.]com
+user[@]malicious-domain[.]evil
+security[@]company[.]org
+
+=== FILE REFERENCES ===
+Windows Executables:
+malware.exe
+C:\Windows\System32\calc.exe
+\\server\share\suspicious.bat
+%TEMP%\evil.scr
+rundll32.exe
+powershell.exe -ExecutionPolicy Bypass
+
+Linux/Unix Files:
+/bin/bash
+/tmp/malicious.sh
+./exploit.bin
+~/Downloads/suspicious.deb
+
+=== MIXED IOC EXAMPLES ===
+Incident Report Fragment:
+"The attacker used IP address 203.0.113.42 to connect to our server on port 22. 
+They uploaded a file with SHA256 hash a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6 
+and executed commands from registry key HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\BadActor.
+The malware contacted C2 server evil-c2.badguys.com on port 443 and 
+sent data to Bitcoin address 1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2."
+
+Network Log Entry:
+"2023-01-15 14:30:22 [INFO] Connection from 192.168.100.50:54321 to server.company.com:443
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/96.0.4664.110
+Referrer: hxxp://malicious-site[.]evil/landing"
+
+Malware Analysis:
+"Sample MD5: d41d8cd98f00b204e9800998ecf8427e
+File downloads from hxxps://cdn[.]malware[.]site/payload[.]exe
+Creates registry persistence at HKCU\Software\Microsoft\Windows\CurrentVersion\Run\Update
+Contacts 2001:db8::1 on port 8080
+Steals wallet.dat targeting address 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
+
+Email Phishing Sample:
+"From: security[@]your-bank[.]com (spoofed)
+Subject: Urgent Account Verification Required
+Please verify your account by clicking: hxxp://phishing-site[.]evil/verify
+If you received this in error, contact admin[@]real-bank[.]com"
+
+=== ADDITIONAL TEST CASES ===
+Mixed Content:
+The server 10.0.0.100 with MAC address 00:1B:44:11:3A:B7 was compromised.
+Exploit CVE-2021-34527 was used to gain access.
+Malware with hash 5d41402abc4b2a76b9719d911017c592 was deployed.
+Data was exfiltrated to AS15169 via encrypted channel.
+
+Defanged IOCs:
+IP: 198[.]51[.]100[.]5
+Domain: suspicious[.]domain[.]net
+URL: hxxps://evil[.]site[.]com/malware[.]php?id=12345
+Email: attacker[@]criminal[.]org
+
+Port Scan Results:
+Target: 192.168.1.100
+Port 80: open (HTTP)
+Port 443: open (HTTPS)  
+Port 22: closed (SSH)
+Port 3389: filtered (RDP)
+
+Certificate Information:
+Subject: CN=*.example.com
+Issuer: CN=Example CA
+Serial: 12:34:56:78:90:AB:CD:EF
+SHA1 Fingerprint: A1:B2:C3:D4:E5:F6:A1:B2:C3:D4:E5:F6:A1:B2:C3:D4:E5:F6:A1:B2
+
+=== END OF TEST DATA === 

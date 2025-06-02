@@ -6,9 +6,63 @@ or a .env file for secure credential management.
 """
 
 import os
+import logging
 from pathlib import Path
 from typing import Optional, Dict, Any
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
+
+
+class Config:
+    """General application configuration."""
+    
+    def __init__(self):
+        """Initialize configuration with defaults and environment overrides."""
+        self._load_environment()
+        self._set_defaults()
+        self._load_from_environment()
+    
+    def _load_environment(self) -> None:
+        """Load environment variables from .env file if it exists."""
+        env_path = Path('.env')
+        if env_path.exists():
+            load_dotenv(env_path)
+    
+    def _set_defaults(self) -> None:
+        """Set default configuration values."""
+        self.debug = False
+        self.cache_enabled = True
+        self.api_timeout = 30
+        self.max_file_size_mb = 100
+        self.max_archive_size_mb = 50
+        self.max_files_per_archive = 100
+    
+    def _load_from_environment(self) -> None:
+        """Load configuration from environment variables."""
+        self.debug = os.getenv('DEBUG', 'false').lower() in ('true', '1', 'yes', 'on')
+        self.cache_enabled = os.getenv('CACHE_ENABLED', 'true').lower() in ('true', '1', 'yes', 'on')
+        self.api_timeout = int(os.getenv('API_TIMEOUT', '30'))
+        self.max_file_size_mb = int(os.getenv('MAX_FILE_SIZE_MB', '100'))
+        self.max_archive_size_mb = int(os.getenv('MAX_ARCHIVE_SIZE_MB', '50'))
+        self.max_files_per_archive = int(os.getenv('MAX_FILES_PER_ARCHIVE', '100'))
+    
+    def update(self, config_dict: Dict[str, Any]) -> None:
+        """Update configuration with provided values."""
+        for key, value in config_dict.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert configuration to dictionary."""
+        return {
+            'debug': self.debug,
+            'cache_enabled': self.cache_enabled,
+            'api_timeout': self.api_timeout,
+            'max_file_size_mb': self.max_file_size_mb,
+            'max_archive_size_mb': self.max_archive_size_mb,
+            'max_files_per_archive': self.max_files_per_archive
+        }
 
 
 class APIConfig:

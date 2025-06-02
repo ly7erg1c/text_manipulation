@@ -50,6 +50,55 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+test_reports/
+test-results/
+pytest_cache/
+.coverage.*
+
+# Test artifacts and temporary files
+tests/temp/
+tests/fixtures/temp/
+tests/output/
+test_temp/
+*.test.log
+test*.log
+*_test_output/
+test_data_*
+.test_*
+
+# Performance test results
+benchmarks/
+performance_results/
+*.perf
+
+# Test databases and caches
+test.db
+test.sqlite
+test.sqlite3
+test_cache/
+.test_cache/
+
+# Mock and fixture data
+mock_data/
+test_fixtures_temp/
+temp_test_files/
+
+# Test reports and artifacts
+junit.xml
+test-report.xml
+test-output.xml
+pytest-results.xml
+.pytest_results/
+
+# Coverage reports (all formats)
+coverage.json
+coverage.lcov
+.coverage_html/
+coverage_html_report/
+
+# Test documentation
+test_docs/
+test_documentation/
 
 # Translations
 *.mo
@@ -198,41 +247,39 @@ Icon
 .AppleDesktop
 Network Trash Folder
 Temporary Items
-.apdisk
 
 # Windows
 Thumbs.db
 Thumbs.db:encryptable
 ehthumbs.db
 ehthumbs_vista.db
-*.tmp
-*.temp
-*.log
-*.lnk
-Desktop.ini
+*.stackdump
+[Dd]esktop.ini
 $RECYCLE.BIN/
 *.cab
 *.msi
 *.msix
 *.msm
 *.msp
-*.exe
+*.lnk
 
-# Linux
-*~
-.fuse_hidden*
-.directory
-.Trash-*
-.nfs*
+# Testing infrastructure specific files
+.tox/
+.coverage
+.coverage.*
+.pytest_cache/
+htmlcov/
+.hypothesis/
+test_reports/
 
-# Project specific
-*.bak
-*.orig
-temp/
-tmp/
-.temp/
-logs/
-*.pid 
+# Additional test exclusions
+tests/screenshots/
+tests/videos/
+tests/logs/
+tests/artifacts/
+allure-results/
+allure-reports/
 
-.cursor/rules/*
-test.txt
+
+/.cursor/rules/*
+

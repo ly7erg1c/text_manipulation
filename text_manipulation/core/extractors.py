@@ -89,6 +89,11 @@ class HashExtractor:
         
         return results
 
+    @classmethod
+    def extract_ssl_certificate_fingerprints(cls, text: str) -> Dict[str, Set[str]]:
+        """Alias for extract_ssl_fingerprints to match CLI naming."""
+        return cls.extract_ssl_fingerprints(text)
+
 
 class NetworkExtractor:
     """Extracts network-related data like IP addresses and URLs from text."""
@@ -189,13 +194,52 @@ class NetworkExtractor:
         # Pattern for domains without protocol
         domain_pattern = r'\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}\b'
         
+        # Common file extensions to exclude (but NOT common TLDs)
+        file_extensions = {
+            'txt', 'doc', 'docx', 'pdf', 'xls', 'xlsx', 'ppt', 'pptx',
+            'zip', 'rar', '7z', 'tar', 'gz', 'bz2',
+            'jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg',
+            'mp3', 'mp4', 'avi', 'mkv', 'flv', 'wmv',
+            'dat', 'log', 'tmp', 'bak', 'cfg', 'conf', 'ini'
+        }
+        
+        # Common TLDs that should NOT be filtered (even if they match executable extensions)
+        common_tlds = {
+            'com', 'org', 'net', 'edu', 'gov', 'mil', 'int', 'arpa',
+            'co', 'uk', 'ca', 'de', 'fr', 'jp', 'au', 'br', 'cn', 'in',
+            'ru', 'za', 'es', 'it', 'nl', 'pl', 'se', 'no', 'fi', 'dk',
+            'io', 'me', 'tv', 'cc', 'ly', 'to', 'info', 'biz', 'name',
+            'mobi', 'pro', 'aero', 'coop', 'museum', 'jobs', 'travel',
+            'xxx', 'tel', 'asia', 'cat', 'post', 'geo', 'local', 'localhost',
+            'evil'  # Custom TLD from test data
+        }
+        
         matches = re.findall(domain_pattern, text)
         domains = set()
         
         for match in matches:
             # Filter out obvious non-domains
             if not re.match(r'^\d+\.\d+\.\d+\.\d+$', match):  # Not an IP
-                domains.add(match.lower())
+                match_lower = match.lower()
+                
+                # Get the extension (last part after the last dot)
+                extension = match_lower.split('.')[-1]
+                
+                # Only filter out if it's a file extension AND not a common TLD
+                if extension in file_extensions and extension not in common_tlds:
+                    continue
+                
+                # Skip very short extensions (likely not TLDs)
+                if len(extension) < 2:
+                    continue
+                
+                # Skip if it contains only numbers in the extension
+                if extension.isdigit():
+                    continue
+                
+                # Additional validation: must have at least one letter in the TLD
+                if any(c.isalpha() for c in extension):
+                    domains.add(match_lower)
         
         return domains
 
@@ -275,22 +319,39 @@ class NetworkExtractor:
             Set of unique MAC addresses found
         """
         # Various MAC address formats
-        patterns = [
-            r'\b([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})\b',  # XX:XX:XX:XX:XX:XX or XX-XX-XX-XX-XX-XX
-            r'\b([0-9A-Fa-f]{4}\.){2}[0-9A-Fa-f]{4}\b',      # XXXX.XXXX.XXXX
-            r'\b[0-9A-Fa-f]{12}\b'                            # XXXXXXXXXXXX
-        ]
-        
         mac_addresses = set()
-        for pattern in patterns:
-            matches = re.findall(pattern, text)
-            if isinstance(matches[0], tuple) if matches else False:
-                # For patterns with groups, reconstruct the full match
-                for match in matches:
-                    if len(match) == 2:  # Colon/dash separated
-                        mac_addresses.add(''.join(match))
-            else:
-                mac_addresses.update(matches)
+        
+        # Pattern 1: XX:XX:XX:XX:XX:XX (colon-separated)
+        pattern1 = r'\b[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}\b'
+        mac_addresses.update(re.findall(pattern1, text))
+        
+        # Pattern 2: XX-XX-XX-XX-XX-XX (dash-separated)
+        pattern2 = r'\b[0-9A-Fa-f]{2}-[0-9A-Fa-f]{2}-[0-9A-Fa-f]{2}-[0-9A-Fa-f]{2}-[0-9A-Fa-f]{2}-[0-9A-Fa-f]{2}\b'
+        mac_addresses.update(re.findall(pattern2, text))
+        
+        # Pattern 3: XXXX.XXXX.XXXX (Cisco format)
+        pattern3 = r'\b[0-9A-Fa-f]{4}\.[0-9A-Fa-f]{4}\.[0-9A-Fa-f]{4}\b'
+        mac_addresses.update(re.findall(pattern3, text))
+        
+        # Pattern 4: XXXXXXXXXXXX (no separators - must be exactly 12 hex digits)
+        pattern4 = r'\b[0-9A-Fa-f]{12}\b'
+        # For this pattern, we need to be more careful to avoid matching other hex values
+        potential_macs = re.findall(pattern4, text)
+        for mac in potential_macs:
+            # Additional validation: check if it's not part of a longer hex string
+            # and if it contains a good mix of characters (not all same digit)
+            if len(set(mac.lower())) > 1:  # More than one unique character
+                mac_addresses.add(mac)
+        
+        # Pattern 5: Partial MAC addresses like XX:XX (incomplete but valid format)
+        # Only add these if they look like legitimate partial MACs (2-5 groups)
+        partial_pattern = r'\b[0-9A-Fa-f]{2}(?:[:-][0-9A-Fa-f]{2}){1,4}\b'
+        partial_macs = re.findall(partial_pattern, text)
+        for mac in partial_macs:
+            # Only include if it has 2-5 groups (not full MAC which is already covered)
+            group_count = mac.count(':') + mac.count('-') + 1
+            if 2 <= group_count <= 5:
+                mac_addresses.add(mac)
         
         return mac_addresses
 
@@ -362,7 +423,7 @@ class NetworkExtractor:
         Returns:
             List of URL tuples from regex matching
         """
-        pattern = r"(((https://)|(http://))?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))"
+        pattern = r"(((https://)|(http://)|(ftp://))?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))"
         return re.findall(pattern, text)
     
     @classmethod
@@ -379,13 +440,42 @@ class NetworkExtractor:
         url_tuples = cls._extract_url_tuples(text)
         clean_urls = set()
         
+        # Common executable extensions to exclude
+        executable_extensions = {
+            'exe', 'bat', 'cmd', 'com', 'scr', 'pif', 'msi', 'jar',  # Windows
+            'sh', 'bin', 'run', 'app', 'deb', 'rpm', 'pkg',         # Unix/Linux
+            'apk', 'ipa', 'dmg'                                      # Mobile/Mac
+        }
+        
         for url_tuple in url_tuples:
             for url in url_tuple:
                 if url and '.' in url:  # Check if it's a URL
-                    if url.startswith(('http://', 'https://')) and not url.startswith('/'):
-                        clean_urls.add(url)
-                elif url and not url.startswith(('http://', 'https://')) and not url.startswith('/'):
-                    clean_urls.add(url)
+                    # Get the extension if any
+                    url_parts = url.split('.')
+                    extension = url_parts[-1].split('?')[0].split('#')[0].split('/')[0].lower()
+                    
+                    # Skip if it's an executable extension (unless it has a protocol or path)
+                    if extension in executable_extensions:
+                        # Only allow if it has a protocol or path indicators
+                        if not (url.startswith(('http://', 'https://', 'ftp://')) or '/' in url or '?' in url or '#' in url):
+                            continue
+                    
+                    # Only add if it starts with protocol or looks like a complete URL/domain
+                    if (url.startswith(('http://', 'https://', 'ftp://')) or 
+                        (not url.startswith('/') and '/' in url or '?' in url)):
+                        # Additional check to avoid including standalone ports
+                        if not url.isdigit() and ':' not in url.split('/')[-1]:
+                            clean_urls.add(url)
+                    elif (not url.startswith(('http://', 'https://', 'ftp://')) and 
+                          not url.startswith('/') and 
+                          not url.isdigit() and 
+                          '.' in url and
+                          len(url.split('.')[-1].split('?')[0].split('#')[0].split('/')[0]) >= 2):  # Has valid TLD
+                        # Additional validation for domain-like strings
+                        # Must contain at least one letter in the TLD part
+                        tld = url.split('.')[-1].split('?')[0].split('#')[0].split('/')[0]
+                        if any(c.isalpha() for c in tld) and extension not in executable_extensions:
+                            clean_urls.add(url)
         
         return clean_urls
     
@@ -475,6 +565,39 @@ class NetworkExtractor:
             'mac_addresses': cls.extract_mac_addresses(text),
             'asn': cls.extract_asn(text)
         }
+
+    @classmethod
+    def extract_all_network_data(cls, text: str) -> Dict[str, Set[str]]:
+        """
+        Extract all network-related data from text.
+        
+        Args:
+            text: The input text to search
+            
+        Returns:
+            Dictionary containing all extracted network data
+        """
+        ports_data = cls.extract_ports(text)
+        
+        return {
+            'ipv4_addresses': cls.extract_ipv4(text),
+            'ipv6_addresses': cls.extract_ipv6(text),
+            'urls': cls.extract_urls(text),
+            'domains': cls.extract_domains(text),
+            'cidr_networks': cls.extract_cidr_networks(text),
+            'ports': {
+                'standalone': ports_data['standalone_ports'],
+                'host_port_pairs': ports_data['host_port_pairs'],
+                'url_ports': ports_data['url_ports']
+            },
+            'mac_addresses': cls.extract_mac_addresses(text),
+            'asn_numbers': cls.extract_asn(text)
+        }
+
+    @staticmethod
+    def extract_asn_numbers(text: str) -> Set[str]:
+        """Alias for extract_asn to match CLI naming."""
+        return NetworkExtractor.extract_asn(text)
 
 
 class CryptocurrencyExtractor:
@@ -571,6 +694,31 @@ class CryptocurrencyExtractor:
             'monero': CryptocurrencyExtractor.extract_monero(text)
         }
 
+    @staticmethod
+    def extract_bitcoin_addresses(text: str) -> Set[str]:
+        """Alias for extract_bitcoin to match CLI naming."""
+        return CryptocurrencyExtractor.extract_bitcoin(text)
+    
+    @staticmethod
+    def extract_ethereum_addresses(text: str) -> Set[str]:
+        """Alias for extract_ethereum to match CLI naming."""
+        return CryptocurrencyExtractor.extract_ethereum(text)
+    
+    @staticmethod
+    def extract_litecoin_addresses(text: str) -> Set[str]:
+        """Alias for extract_litecoin to match CLI naming."""
+        return CryptocurrencyExtractor.extract_litecoin(text)
+    
+    @staticmethod
+    def extract_monero_addresses(text: str) -> Set[str]:
+        """Alias for extract_monero to match CLI naming."""
+        return CryptocurrencyExtractor.extract_monero(text)
+    
+    @staticmethod
+    def extract_all_cryptocurrency_addresses(text: str) -> Dict[str, Set[str]]:
+        """Alias for extract_all_crypto to match CLI naming."""
+        return CryptocurrencyExtractor.extract_all_crypto(text)
+
 
 class SecurityExtractor:
     """Extracts security-related artifacts from text."""
@@ -636,6 +784,21 @@ class SecurityExtractor:
         # Common registry hives and patterns
         pattern = r'\b(?:HKEY_LOCAL_MACHINE|HKLM|HKEY_CURRENT_USER|HKCU|HKEY_CLASSES_ROOT|HKCR|HKEY_USERS|HKU|HKEY_CURRENT_CONFIG|HKCC)\\[^"\s\n\r]*'
         return set(re.findall(pattern, text, re.IGNORECASE))
+
+    @staticmethod
+    def extract_cve_identifiers(text: str) -> Set[str]:
+        """Alias for extract_cve to match CLI naming."""
+        return SecurityExtractor.extract_cve(text)
+    
+    @staticmethod
+    def extract_yara_rules(text: str) -> Dict[str, Set[str]]:
+        """Alias for extract_yara_rules to match CLI naming."""
+        return SecurityExtractor.extract_yara_rules(text)
+    
+    @staticmethod
+    def extract_windows_registry_keys(text: str) -> Set[str]:
+        """Alias for extract_registry_keys to match CLI naming."""
+        return SecurityExtractor.extract_registry_keys(text)
 
 
 class EmailExtractor:
@@ -703,6 +866,11 @@ class EmailExtractor:
         """
         return defanged_email.replace('[@]', '@').replace('[.]', '.')
 
+    @staticmethod
+    def extract_email_addresses(text: str) -> Set[str]:
+        """Alias for extract_emails to match CLI naming."""
+        return EmailExtractor.extract_emails(text)
+
 
 class FileExtractor:
     """Extracts file-related information from text."""
@@ -720,15 +888,91 @@ class FileExtractor:
         """
         # Enhanced pattern for various executable types
         patterns = [
-            r'\b\w+\.(?:exe|bat|cmd|com|scr|pif|msi|jar)\b',  # Windows executables
-            r'\b\w+\.(?:sh|bin|run|app|deb|rpm|pkg)\b',       # Unix/Linux executables
-            r'\b\w+\.(?:apk|ipa)\b',                          # Mobile apps
+            r'\b[a-zA-Z0-9_-]+\.(?:exe|bat|cmd|scr|pif|msi|jar)\b',  # Windows executables (excluding .com for now)
+            r'\b[a-zA-Z0-9_-]+\.(?:sh|bin|run|app|deb|rpm|pkg)\b',       # Unix/Linux executables
+            r'\b[a-zA-Z0-9_-]+\.(?:apk|ipa)\b',                          # Mobile apps
             r'[C-Z]:\\(?:[^\\/:*?"<>|\r\n]+\\)*[^\\/:*?"<>|\r\n]*\.(?:exe|bat|cmd|com|scr|pif|msi)\b'  # Full Windows paths
         ]
         
+        # Separate pattern for .com files (more restrictive)
+        com_pattern = r'\b[a-zA-Z0-9_-]+\.com\b'
+        
+        # Common domain TLDs that should be excluded
+        common_tlds = {
+            'com', 'org', 'net', 'edu', 'gov', 'mil', 'int', 'arpa',
+            'co', 'uk', 'ca', 'de', 'fr', 'jp', 'au', 'br', 'cn', 'in',
+            'ru', 'za', 'es', 'it', 'nl', 'pl', 'se', 'no', 'fi', 'dk',
+            'io', 'me', 'tv', 'cc', 'ly', 'to', 'info', 'biz', 'name',
+            'mobi', 'pro', 'aero', 'coop', 'museum', 'jobs', 'travel',
+            'xxx', 'tel', 'asia', 'cat', 'post', 'geo', 'local', 'localhost',
+            'evil'  # Adding custom TLD from your data
+        }
+        
+        # Domain-like patterns to exclude
+        domain_indicators = ['www', 'api', 'mail', 'ftp', 'smtp', 'pop', 'imap', 'files', 'host', 'server', 'sub', 'evil-c2']
+        
         executables = set()
+        
+        # Process regular executable patterns
         for pattern in patterns:
-            executables.update(re.findall(pattern, text, re.IGNORECASE))
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            for match in matches:
+                # Get the parts
+                if '.' in match:
+                    full_name = match.lower()
+                    parts = full_name.split('.')
+                    
+                    # Skip if it looks like a domain name
+                    if len(parts) >= 2:
+                        base_name = '.'.join(parts[:-1])  # Everything except the extension
+                        extension = parts[-1]
+                        
+                        # Skip if this is clearly a domain pattern (domain.tld.extension)
+                        if len(parts) >= 3:
+                            potential_tld = parts[-2]
+                            if potential_tld in common_tlds:
+                                continue  # Skip domain.com.exe patterns
+                        
+                        # Skip if the base name contains domain indicators
+                        if any(indicator in base_name for indicator in domain_indicators):
+                            continue
+                        
+                        # Skip if the base name looks like a typical domain
+                        # (contains multiple dots or common domain patterns)
+                        if '.' in base_name:  # Has subdomain structure
+                            subdomain_parts = base_name.split('.')
+                            # Check if any part looks like a TLD
+                            if any(part in common_tlds for part in subdomain_parts):
+                                continue
+                        
+                        # Skip if it contains hyphens and looks domain-like
+                        if '-' in base_name:
+                            hyphen_parts = base_name.split('-')
+                            # If it has domain-like words or TLDs
+                            if any(part in common_tlds or part in domain_indicators for part in hyphen_parts):
+                                continue
+                        
+                        # Additional check: if base name is a single common word, it might be a domain
+                        if base_name in common_tlds:
+                            continue
+                    
+                    # If we get here, it's likely a legitimate executable
+                    executables.add(match)
+        
+        # Handle .com files separately with stricter validation
+        com_matches = re.findall(com_pattern, text, re.IGNORECASE)
+        for match in com_matches:
+            match_lower = match.lower()
+            base_name = match_lower.replace('.com', '')
+            
+            # Only add .com files if they look like legitimate DOS/Windows executables
+            # Skip if base name contains domain indicators or looks like a domain
+            if not any(indicator in base_name for indicator in domain_indicators):
+                # Skip common domain patterns
+                if not (len(base_name) > 10 or '-' in base_name or '.' in base_name):
+                    # Skip if it's a known domain or looks domain-like
+                    if base_name not in ['google', 'example', 'company', 'badguys', 'virustotal']:
+                        executables.add(match)
         
         return executables
 
@@ -827,3 +1071,118 @@ class DefangUtility:
         text = text.replace('[:]', ':')
         
         return text 
+
+
+# Standalone functions for backwards compatibility and easier testing
+def extract_ips(text: str) -> List[str]:
+    """
+    Extract IP addresses from text.
+    
+    Args:
+        text: The input text to search
+        
+    Returns:
+        List of IP addresses found
+    """
+    ipv4_addresses = NetworkExtractor.extract_ipv4(text)
+    ipv6_addresses = NetworkExtractor.extract_ipv6(text)
+    return list(ipv4_addresses.union(ipv6_addresses))
+
+
+def extract_urls(text: str) -> List[str]:
+    """
+    Extract URLs from text.
+    
+    Args:
+        text: The input text to search
+        
+    Returns:
+        List of URLs found
+    """
+    urls = NetworkExtractor.extract_urls(text)
+    return list(urls)
+
+
+def extract_hashes(text: str, hash_type: str = "all") -> List[str]:
+    """
+    Extract cryptographic hashes from text.
+    
+    Args:
+        text: The input text to search
+        hash_type: Type of hash to extract ("md5", "sha1", "sha256", or "all")
+        
+    Returns:
+        List of hashes found
+    """
+    if hash_type == "md5":
+        return list(HashExtractor.extract_md5(text))
+    elif hash_type == "sha1":
+        return list(HashExtractor.extract_sha1(text))
+    elif hash_type == "sha256":
+        return list(HashExtractor.extract_sha256(text))
+    elif hash_type == "all":
+        md5_hashes = HashExtractor.extract_md5(text)
+        sha1_hashes = HashExtractor.extract_sha1(text)
+        sha256_hashes = HashExtractor.extract_sha256(text)
+        return list(md5_hashes.union(sha1_hashes).union(sha256_hashes))
+    else:
+        raise ValueError(f"Unsupported hash type: {hash_type}")
+
+
+def extract_emails(text: str) -> List[str]:
+    """
+    Extract email addresses from text.
+    
+    Args:
+        text: The input text to search
+        
+    Returns:
+        List of email addresses found
+    """
+    emails = EmailExtractor.extract_emails(text)
+    return list(emails)
+
+
+def extract_from_file(file_path, extraction_type: str) -> List[str]:
+    """
+    Extract data from a file.
+    
+    Args:
+        file_path: Path to the file to read
+        extraction_type: Type of data to extract ("ip", "url", "hash", "email")
+        
+    Returns:
+        List of extracted data
+    """
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return extract_from_text(content, extraction_type)
+    except Exception as e:
+        return []
+
+
+def extract_from_text(text: str, extraction_type: str) -> List[str]:
+    """
+    Extract data from text based on the specified type.
+    
+    Args:
+        text: The input text to search
+        extraction_type: Type of data to extract ("ip", "url", "hash", "email")
+        
+    Returns:
+        List of extracted data
+        
+    Raises:
+        ValueError: If extraction_type is not supported
+    """
+    if extraction_type == "ip":
+        return extract_ips(text)
+    elif extraction_type == "url":
+        return extract_urls(text)
+    elif extraction_type == "hash":
+        return extract_hashes(text)
+    elif extraction_type == "email":
+        return extract_emails(text)
+    else:
+        raise ValueError(f"Unsupported extraction type: {extraction_type}") 

@@ -373,3 +373,94 @@ def cached_api_call(provider: str, endpoint: str, ttl: Optional[int] = None):
         
         return wrapper
     return decorator 
+
+
+class Cache:
+    """
+    Simple cache interface for testing and basic usage.
+    Wraps the CacheManager for backwards compatibility.
+    """
+    
+    def __init__(self, cache_file: Optional[str] = None):
+        """
+        Initialize cache.
+        
+        Args:
+            cache_file: Path to cache file (optional)
+        """
+        if cache_file:
+            cache_dir = str(Path(cache_file).parent)
+        else:
+            cache_dir = ".cache"
+        
+        self._manager = CacheManager(cache_dir=cache_dir)
+        self._default_provider = "default"
+        self._default_endpoint = "cache"
+    
+    def get(self, key: str) -> Optional[Any]:
+        """
+        Get value from cache.
+        
+        Args:
+            key: Cache key
+            
+        Returns:
+            Cached value or None if not found
+        """
+        if key is None:
+            return None
+        
+        params = {"key": key}
+        result = self._manager.get(self._default_provider, self._default_endpoint, params)
+        return result.get('value') if result else None
+    
+    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> bool:
+        """
+        Set value in cache.
+        
+        Args:
+            key: Cache key
+            value: Value to cache
+            ttl: Time to live in seconds
+            
+        Returns:
+            True if successful
+        """
+        if key is None:
+            return False
+        
+        params = {"key": key}
+        cache_value = {"value": value}
+        
+        try:
+            self._manager.put(self._default_provider, self._default_endpoint, params, cache_value, ttl)
+            return True
+        except Exception:
+            return False
+    
+    def delete(self, key: str) -> bool:
+        """
+        Delete value from cache.
+        
+        Args:
+            key: Cache key
+            
+        Returns:
+            True if successful
+        """
+        if key is None:
+            return False
+        
+        params = {"key": key}
+        try:
+            self._manager.invalidate(self._default_provider, self._default_endpoint, params)
+            return True
+        except Exception:
+            return False
+    
+    def clear(self) -> None:
+        """Clear all cached values."""
+        try:
+            self._manager.clear_all()
+        except Exception:
+            pass 
