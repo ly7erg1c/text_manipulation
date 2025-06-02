@@ -207,7 +207,8 @@ class NetworkExtractor:
             'zip', 'rar', '7z', 'tar', 'gz', 'bz2',
             'jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg',
             'mp3', 'mp4', 'avi', 'mkv', 'flv', 'wmv',
-            'dat', 'log', 'tmp', 'bak', 'cfg', 'conf', 'ini'
+            'dat', 'log', 'tmp', 'bak', 'cfg', 'conf', 'ini',
+            'user'  
         }
         
         # Common TLDs that should NOT be filtered (even if they match executable extensions)
@@ -362,6 +363,32 @@ class NetworkExtractor:
             # Only include if it has 2-5 groups (not full MAC which is already covered)
             group_count = mac.count(':') + mac.count('-') + 1
             if 2 <= group_count <= 5:
+                # Additional validation to avoid port-like patterns
+                # Skip if all parts are decimal numbers AND they look like common ports
+                parts = mac.replace('-', ':').split(':')
+                
+                # Check if this looks like a port pattern (all decimal, small numbers)
+                is_port_like = True
+                for part in parts:
+                    if not part.isdigit():
+                        is_port_like = False
+                        break
+                    num = int(part)
+                    # If any part is > 255 or contains hex digits, it's likely a MAC
+                    if num > 255:
+                        is_port_like = False
+                        break
+                
+                # If it looks port-like, apply additional checks
+                if is_port_like:
+                    # Skip obvious port patterns (same numbers, common ports)
+                    if len(set(parts)) == 1:  # All parts are the same (like 22:22)
+                        continue
+                    # Skip if all parts are common port numbers
+                    common_ports = {'21', '22', '23', '25', '53', '80', '110', '143', '443', '993', '995'}
+                    if all(part in common_ports for part in parts):
+                        continue
+                
                 mac_addresses.add(mac)
         
         return mac_addresses

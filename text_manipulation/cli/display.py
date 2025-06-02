@@ -152,4 +152,8 @@ class DisplayManager:
     
     def show_separator(self):
         """Display a separator line."""
-        print("-" * 50) 
+        print("-" * 50)
+
+
+# Alias for backward compatibility and test compatibility
+Display = DisplayManager 

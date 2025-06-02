@@ -25,7 +25,7 @@ class TestTextManipulationCLI:
         assert cli is not None
         assert hasattr(cli, 'run')
 
-    @patch('builtins.input', side_effect=['1', 'test input', '0'])
+    @patch('builtins.input', side_effect=['n', '1', '0', '0'])  # initial prompt, main menu, hash menu, exit
     @patch('sys.stdout', new_callable=StringIO)
     def test_cli_run_basic(self, mock_stdout, mock_input, cli):
         """Test basic CLI run functionality."""
@@ -38,7 +38,7 @@ class TestTextManipulationCLI:
         output = mock_stdout.getvalue()
         assert len(output) > 0
 
-    @patch('builtins.input', side_effect=['invalid', '0'])
+    @patch('builtins.input', side_effect=['n', 'invalid', '0'])  # initial prompt, invalid choice, exit
     @patch('sys.stdout', new_callable=StringIO)
     def test_cli_invalid_input(self, mock_stdout, mock_input, cli):
         """Test CLI handling of invalid input."""
@@ -99,7 +99,7 @@ class TestTextManipulationCLI:
             # Basic integration test
             assert mock_extractors is not None
 
-    @patch('builtins.input', side_effect=['2', 'https://example.com', '0'])
+    @patch('builtins.input', side_effect=['n', '2', '0', '0'])  # initial prompt, network menu, exit submenu, exit main
     @patch('sys.stdout', new_callable=StringIO)
     def test_cli_url_extraction(self, mock_stdout, mock_input, cli):
         """Test CLI URL extraction functionality."""
@@ -111,7 +111,7 @@ class TestTextManipulationCLI:
         output = mock_stdout.getvalue()
         assert len(output) > 0
 
-    @patch('builtins.input', side_effect=['3', '5d41402abc4b2a76b9719d911017c592', '0'])
+    @patch('builtins.input', side_effect=['n', '1', '0', '0'])  # initial prompt, hash menu, exit submenu, exit main
     @patch('sys.stdout', new_callable=StringIO)
     def test_cli_hash_extraction(self, mock_stdout, mock_input, cli):
         """Test CLI hash extraction functionality."""
@@ -123,7 +123,7 @@ class TestTextManipulationCLI:
         output = mock_stdout.getvalue()
         assert len(output) > 0
 
-    @patch('builtins.input', side_effect=['help', '0'])
+    @patch('builtins.input', side_effect=['n', 'help', '0'])  # initial prompt, invalid command (help), exit
     @patch('sys.stdout', new_callable=StringIO)
     def test_cli_help_command(self, mock_stdout, mock_input, cli):
         """Test CLI help command."""
@@ -149,7 +149,7 @@ class TestTextManipulationCLI:
             assert False, "CLI should handle errors without crashing"
 
     @patch('pathlib.Path.exists', return_value=True)
-    @patch('builtins.input', side_effect=['file', 'test.txt', '0'])
+    @patch('builtins.input', side_effect=['n', '8', '0', '0'])  # initial prompt, data menu, exit submenu, exit main
     @patch('sys.stdout', new_callable=StringIO)
     def test_cli_file_input(self, mock_stdout, mock_input, mock_exists, cli):
         """Test CLI file input functionality."""

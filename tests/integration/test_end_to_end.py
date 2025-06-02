@@ -83,7 +83,7 @@ class TestEndToEndFunctionality:
         assert len(sha1_hashes) >= 1
         assert len(sha256_hashes) >= 1
 
-    @patch('builtins.input', side_effect=['1', 'quit'])
+    @patch('builtins.input', side_effect=['n', '0'])  # initial prompt, exit
     @patch('text_manipulation.core.extractors.extract_from_file')
     def test_cli_file_processing_integration(self, mock_extract, mock_input, sample_data_file):
         """Test CLI file processing integration."""
