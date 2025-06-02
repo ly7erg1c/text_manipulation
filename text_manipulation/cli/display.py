@@ -156,4 +156,4 @@ class DisplayManager:
 
 
 # Alias for backward compatibility and test compatibility
-Display = DisplayManager 
+Display = DisplayManager
