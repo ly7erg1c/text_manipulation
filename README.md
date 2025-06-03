@@ -398,7 +398,6 @@ ABUSEIPDB_API_KEY=your_abuseipdb_api_key_here
 - **Secure Handling**: Keys are stored securely and never logged
 - **Read-Only Usage**: All API keys are used exclusively for read-only database queries
 
-```
 
 ### Key Components
 
